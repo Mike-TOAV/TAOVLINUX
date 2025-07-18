@@ -3,19 +3,24 @@ set -e
 
 echo "===== TAOV Till Post-Install Setup ====="
 
-# 1. AnyDesk (repo, install)
+# --- 1. DEBLOAT! Purge any unwanted packages just in case ---
+echo "Purging unwanted packages..."
+apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter || true
+apt-get autoremove -y || true
+
+# --- 2. AnyDesk (repo, install) ---
 echo "Installing AnyDesk..."
 wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | apt-key add -
 echo "deb http://deb.anydesk.com/ all main" > /etc/apt/sources.list.d/anydesk.list
 apt-get update
 apt-get -y install anydesk
 
-# 2. Google Chrome (install .deb)
+# --- 3. Google Chrome (install .deb) ---
 echo "Installing Google Chrome..."
 wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 apt-get -y install /tmp/chrome.deb || apt-get -fy install
 
-# 3. SimplePOSPrint (fetch & install as systemd service)
+# --- 4. SimplePOSPrint (fetch & install as systemd service) ---
 echo "Setting up SimplePOSPrint..."
 SIMPLEPOS_DIR="/opt/spp"
 SPP_USER="spp"
@@ -55,13 +60,13 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# 4. Imagemode Chrome extension from plugins dir
+# --- 5. Imagemode Chrome extension from plugins dir ---
 PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
 EXT_DST="/opt/chrome-extensions/imagemode"
 mkdir -p "$EXT_DST"
 cp -r "$PLUGIN_SRC"/* "$EXT_DST"
 
-# 5. User & Openbox autologin, kiosk, wallpaper, menu
+# --- 6. User & Openbox autologin, kiosk, wallpaper, menu ---
 USERNAME="till"
 HOMEDIR="/home/$USERNAME"
 if ! id "$USERNAME" >/dev/null 2>&1; then
@@ -125,4 +130,11 @@ EOFB
 echo "feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg" >> "$HOMEDIR/.config/openbox/autostart"
 chown $USERNAME:$USERNAME "$HOMEDIR/.fehbg" "$HOMEDIR/.config/openbox/autostart"
 
+# --- 7. Set Openbox as default session for till user ---
+echo "exec openbox-session" > "$HOMEDIR/.xsession"
+chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
+
 echo "===== TAOV Till Post-Install Setup Complete ====="
+
+# --- 8. Self-cleanup
+rm -- "$0"
