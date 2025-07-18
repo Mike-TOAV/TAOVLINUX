@@ -1,4 +1,7 @@
 #!/bin/bash
+exec > >(tee /root/taov-setup.log) 2>&1
+set -x
+
 set -e
 
 echo "===== TAOV Till Post-Install Setup ====="
