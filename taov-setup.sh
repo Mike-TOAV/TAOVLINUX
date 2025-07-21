@@ -16,11 +16,13 @@ apt-get update
 apt-get install -y lightdm
 
 # --- 3. AnyDesk (repo, install) ---
+set +e
 echo "Installing AnyDesk..."
 wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | apt-key add -
 echo "deb http://deb.anydesk.com/ all main" > /etc/apt/sources.list.d/anydesk.list
 apt-get update
 apt-get -y install anydesk
+set -e
 
 # --- 4. Google Chrome (install .deb) ---
 echo "Installing Google Chrome..."
