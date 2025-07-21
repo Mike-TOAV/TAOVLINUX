@@ -5,6 +5,9 @@ set -x
 
 echo "===== TAOV Till Post-Install Setup ====="
 
+# Remove cdrom repo if present (prevents apt-get errors)
+sed -i '/cdrom:/d' /etc/apt/sources.list
+
 # --- 1. DEBLOAT! Purge any unwanted packages just in case ---
 echo "Purging unwanted packages..."
 apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter || true
