@@ -5,6 +5,12 @@ set -x
 
 echo "===== TAOV Till Post-Install Setup ====="
 
+echo "Installing CUPS and printer setup tools..."
+apt-get install -y cups system-config-printer
+systemctl enable cups
+systemctl start cups
+usermod -aG lpadmin till
+
 # Remove cdrom repo if present (prevents apt-get errors)
 sed -i '/cdrom:/d' /etc/apt/sources.list
 
