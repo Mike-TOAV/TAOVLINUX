@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 set -e
 exec > >(tee /root/taov-setup.log) 2>&1
 set -x
@@ -107,21 +108,33 @@ fi
 if [ -f /etc/lightdm/lightdm.conf ]; then
   sed -i 's/^#autologin-user=.*/autologin-user=till/' /etc/lightdm/lightdm.conf
   sed -i '/^\[Seat:\*\]/a autologin-user=till' /etc/lightdm/lightdm.conf
+  # Force Openbox session for till in LightDM
+  if ! grep -q "user-session=openbox" /etc/lightdm/lightdm.conf; then
+    sed -i '/^\[Seat:\*\]/a user-session=openbox' /etc/lightdm/lightdm.conf
+  fi
 else
   echo "WARNING: /etc/lightdm/lightdm.conf not found! Skipping autologin setup."
 fi
 ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.service
+
+# Write .dmrc so till always logs in with Openbox
+echo -e "[Desktop]\nSession=openbox" > "$HOMEDIR/.dmrc"
+chown $USERNAME:$USERNAME "$HOMEDIR/.dmrc"
 
 # Robust Openbox config/menu block
 set +e
 
 mkdir -p "$HOMEDIR/.config/openbox"
 
-# Autostart script
+# Autostart script with debug
 cat > "$HOMEDIR/.config/openbox/autostart" <<EOFA
 #!/bin/bash
+echo "AUTOSTART: running \$(date)" > /tmp/taov-autostart.log
+env >> /tmp/taov-autostart.log
+which google-chrome >> /tmp/taov-autostart.log
 matchbox-keyboard &
 google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
+echo "AUTOSTART: done \$(date)" >> /tmp/taov-autostart.log
 EOFA
 chmod +x "$HOMEDIR/.config/openbox/autostart"
 
@@ -208,6 +221,7 @@ fi
 
 # Set Openbox as default session for till user
 echo "exec openbox-session" > "$HOMEDIR/.xsession"
+chmod +x "$HOMEDIR/.xsession"
 chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
 
 set -e
