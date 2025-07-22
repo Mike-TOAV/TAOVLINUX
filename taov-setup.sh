@@ -5,12 +5,6 @@ set -x
 
 echo "===== TAOV Till Post-Install Setup ====="
 
-echo "Installing CUPS and printer setup tools..."
-apt-get install -y cups system-config-printer
-systemctl enable cups
-systemctl start cups
-usermod -aG lpadmin till
-
 # Remove cdrom repo if present (prevents apt-get errors)
 sed -i '/cdrom:/d' /etc/apt/sources.list
 
@@ -24,7 +18,14 @@ echo "Checking and (re)installing LightDM if needed..."
 apt-get update
 apt-get install -y lightdm
 
-# --- 3. AnyDesk (repo, install) ---
+# --- 3. CUPS and printer tools ---
+echo "Installing CUPS and printer setup tools..."
+apt-get install -y cups system-config-printer
+systemctl enable cups
+systemctl start cups
+usermod -aG lpadmin till
+
+# --- 4. AnyDesk (repo, install) ---
 set +e
 echo "Installing AnyDesk..."
 wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | apt-key add -
@@ -33,12 +34,12 @@ apt-get update
 apt-get -y install anydesk
 set -e
 
-# --- 4. Google Chrome (install .deb) ---
+# --- 5. Google Chrome (install .deb) ---
 echo "Installing Google Chrome..."
 wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 apt-get -y install /tmp/chrome.deb || apt-get -fy install
 
-# --- 5. SimplePOSPrint (fetch & install as systemd service) ---
+# --- 6. SimplePOSPrint (fetch & install as systemd service) ---
 echo "Setting up SimplePOSPrint..."
 SIMPLEPOS_DIR="/opt/spp"
 SPP_USER="spp"
@@ -78,7 +79,7 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# --- 6. Imagemode Chrome extension from plugins dir ---
+# --- 7. Imagemode Chrome extension from plugins dir ---
 set +e
 PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
 EXT_DST="/opt/chrome-extensions/imagemode"
@@ -91,11 +92,11 @@ else
   echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
 fi
 set -e
-# --- 7. User, LightDM autologin, Openbox kiosk, menu, wallpaper (robust) ---
+
+# --- 8. User, LightDM autologin, Openbox config, menu, wallpaper ---
 USERNAME="till"
 HOMEDIR="/home/$USERNAME"
 
-# Ensure till user exists (guarded, idempotent)
 if ! id "$USERNAME" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$USERNAME"
   echo "$USERNAME:T@OV2025!" | chpasswd
@@ -111,7 +112,7 @@ else
 fi
 ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.service
 
-# --- Robust Openbox config ---
+# Robust Openbox config/menu block
 set +e
 
 mkdir -p "$HOMEDIR/.config/openbox"
@@ -158,10 +159,8 @@ awk '/<\/keyboard>/{
   print "    </keybind>"
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
 
-# Ownership fix
 chown -R $USERNAME:$USERNAME "$HOMEDIR/.config/openbox"
 
-# Attempt Openbox reconfigure for till user (non-fatal if fails)
 sudo -u $USERNAME openbox --reconfigure || true
 
 # Wallpaper setup
