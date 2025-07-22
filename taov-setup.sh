@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 exec > >(tee /root/taov-setup.log) 2>&1
+exec > >(tee /root/taov-setup.log)
+exec 2> >(tee /root/taov-setup.err >&2)
 set -x
 
 echo "===== TAOV Till Post-Install Setup ====="
@@ -212,6 +214,12 @@ echo "exec openbox-session" > "$HOMEDIR/.xsession"
 chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
 
 set -e
+
+if [ -s /root/taov-setup.err ]; then
+  cp /root/taov-setup.err /home/till/taov-setup.err
+  chown till:till /home/till/taov-setup.err
+  echo 'if [ -s ~/taov-setup.err ]; then vim ~/taov-setup.err; fi' >> /home/till/.profile
+fi
 
 echo "===== TAOV Till Post-Install Setup Complete ====="
 
