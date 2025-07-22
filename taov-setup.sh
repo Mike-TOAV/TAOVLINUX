@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 exec > >(tee /root/taov-setup.log) 2>&1
-exec 2> >(tee /root/taov-setup.err >&2)
 set -x
 
 echo "===== TAOV Till Post-Install Setup ====="
@@ -212,14 +211,6 @@ echo "exec openbox-session" > "$HOMEDIR/.xsession"
 chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
 
 set -e
-
-# --- Display error log only for TTY login ---
-if [ -s /root/taov-setup.err ]; then
-  cp /root/taov-setup.err /home/till/taov-setup.err
-  chown till:till /home/till/taov-setup.err
-  # Only show errors on TTY login, not in graphical session
-  echo 'if [ -s ~/taov-setup.err ] && [ -z "$DISPLAY" ]; then vim ~/taov-setup.err; fi' >> /home/till/.bash_profile
-fi
 
 echo "===== TAOV Till Post-Install Setup Complete ====="
 
