@@ -163,14 +163,49 @@ chown -R $USERNAME:$USERNAME "$HOMEDIR/.config/openbox"
 
 sudo -u $USERNAME openbox --reconfigure || true
 
-# Wallpaper setup
-mkdir -p "$HOMEDIR/Pictures"
-wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/TAOV-Wallpaper.jpg
-cat > "$HOMEDIR/.fehbg" <<EOFB
-feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg
-EOFB
-echo "feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg" >> "$HOMEDIR/.config/openbox/autostart"
-chown $USERNAME:$USERNAME "$HOMEDIR/.fehbg" "$HOMEDIR/.config/openbox/autostart"
+# --- Ensure TAOVLINUX repo is present and up to date ---
+REPO_URL="https://github.com/Mike-TOAV/TAOVLINUX.git"
+REPO_DIR="/opt/TAOVLINUX"
+
+if [ ! -d "$REPO_DIR" ]; then
+  echo "Cloning TAOVLINUX repo to $REPO_DIR..."
+  git clone "$REPO_URL" "$REPO_DIR"
+else
+  echo "Updating TAOVLINUX repo in $REPO_DIR..."
+  cd "$REPO_DIR"
+  git pull
+  cd -
+fi
+
+# --- Set GRUB background image ---
+GRUB_BG_SRC="$REPO_DIR/wallpapers/taov-grub.png"
+GRUB_BG_DST="/boot/grub/taov-grub.png"
+if [ -f "$GRUB_BG_SRC" ]; then
+  cp "$GRUB_BG_SRC" "$GRUB_BG_DST"
+  chmod 644 "$GRUB_BG_DST"
+  if ! grep -q "GRUB_BACKGROUND=" /etc/default/grub; then
+    echo "GRUB_BACKGROUND=\"$GRUB_BG_DST\"" | tee -a /etc/default/grub
+  else
+    sed -i "s|^GRUB_BACKGROUND=.*|GRUB_BACKGROUND=\"$GRUB_BG_DST\"|" /etc/default/grub
+  fi
+  update-grub
+  echo "GRUB background image set!"
+else
+  echo "GRUB background image not found!"
+fi
+
+# --- Set desktop wallpaper ---
+USERNAME="till"
+HOMEDIR="/home/$USERNAME"
+WALLPAPER_SRC="$REPO_DIR/wallpapers/TAOV-Wallpaper.jpg"
+WALLPAPER_DST="$HOMEDIR/Pictures/taov-wallpaper.jpg"
+if [ -f "$WALLPAPER_SRC" ]; then
+  cp "$WALLPAPER_SRC" "$WALLPAPER_DST"
+  chown "$USERNAME:$USERNAME" "$WALLPAPER_DST"
+  echo "Wallpaper copied to $WALLPAPER_DST"
+else
+  echo "Desktop wallpaper not found!"
+fi
 
 # Set Openbox as default session for till user
 echo "exec openbox-session" > "$HOMEDIR/.xsession"
