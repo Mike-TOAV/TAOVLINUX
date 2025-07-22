@@ -68,19 +68,19 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# --- 4. Imagemode Chrome extension
-set +e
-PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
-EXT_DST="/opt/chrome-extensions/imagemode"
-echo "Copying Imagemode Chrome extension from $PLUGIN_SRC to $EXT_DST..."
-mkdir -p "$EXT_DST"
-if [ -d "$PLUGIN_SRC" ]; then
-  cp -r "$PLUGIN_SRC"/* "$EXT_DST"
-  echo "Imagemode extension copied."
-else
-  echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
-fi
-set -e
+# # --- 4. Imagemode Chrome extension
+# set +e
+# PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
+# EXT_DST="/opt/chrome-extensions/imagemode"
+# echo "Copying Imagemode Chrome extension from $PLUGIN_SRC to $EXT_DST..."
+# mkdir -p "$EXT_DST"
+# if [ -d "$PLUGIN_SRC" ]; then
+#   cp -r "$PLUGIN_SRC"/* "$EXT_DST"
+#   echo "Imagemode extension copied."
+# else
+#   echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
+# fi
+# set -e
 
 # --- 5. User till, LightDM, Openbox, rc.xml/menu, wallpaper
 USERNAME="till"
