@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 exec > >(tee /root/taov-setup.log) 2>&1
-exec > >(tee /root/taov-setup.log)
 exec 2> >(tee /root/taov-setup.err >&2)
 set -x
 
@@ -125,6 +124,7 @@ cat > "$HOMEDIR/.config/openbox/autostart" <<EOFA
 matchbox-keyboard &
 google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
 EOFA
+chmod +x "$HOMEDIR/.config/openbox/autostart"
 
 # Custom menu.xml
 MENU_XML="$HOMEDIR/.config/openbox/menu.xml"
@@ -197,8 +197,6 @@ else
 fi
 
 # --- Set desktop wallpaper ---
-USERNAME="till"
-HOMEDIR="/home/$USERNAME"
 WALLPAPER_SRC="$REPO_DIR/wallpapers/TAOV-Wallpaper.jpg"
 WALLPAPER_DST="$HOMEDIR/Pictures/taov-wallpaper.jpg"
 if [ -f "$WALLPAPER_SRC" ]; then
@@ -215,10 +213,12 @@ chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
 
 set -e
 
+# --- Display error log only for TTY login ---
 if [ -s /root/taov-setup.err ]; then
   cp /root/taov-setup.err /home/till/taov-setup.err
   chown till:till /home/till/taov-setup.err
-  echo 'if [ -s ~/taov-setup.err ]; then vim ~/taov-setup.err; fi' >> /home/till/.profile
+  # Only show errors on TTY login, not in graphical session
+  echo 'if [ -s ~/taov-setup.err ] && [ -z "$DISPLAY" ]; then vim ~/taov-setup.err; fi' >> /home/till/.bash_profile
 fi
 
 echo "===== TAOV Till Post-Install Setup Complete ====="
