@@ -1,47 +1,35 @@
 #!/bin/bash
-#!/bin/bash
 set -e
 exec > >(tee /root/taov-setup.log) 2>&1
 set -x
 
 echo "===== TAOV Till Post-Install Setup ====="
 
-# Remove cdrom repo if present (prevents apt-get errors)
+# --- 1. Debloat: Remove unwanted packages
 sed -i '/cdrom:/d' /etc/apt/sources.list
-
-# --- 1. DEBLOAT! Purge any unwanted packages just in case ---
-echo "Purging unwanted packages..."
 apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter || true
 apt-get autoremove -y || true
 
-# --- 2. Ensure LightDM is installed and available ---
-echo "Checking and (re)installing LightDM if needed..."
+# --- 2. Core: LightDM, CUPS, network/printer, AnyDesk, Chrome
 apt-get update
-apt-get install -y lightdm
+apt-get install -y lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox matchbox-keyboard \
+    python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator fonts-dejavu fonts-liberation mesa-utils feh
 
-# --- 3. CUPS and printer tools ---
-echo "Installing CUPS and printer setup tools..."
-apt-get install -y cups system-config-printer
 systemctl enable cups
 systemctl start cups
 usermod -aG lpadmin till
 
-# --- 4. AnyDesk (repo, install) ---
 set +e
-echo "Installing AnyDesk..."
 wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | apt-key add -
 echo "deb http://deb.anydesk.com/ all main" > /etc/apt/sources.list.d/anydesk.list
 apt-get update
 apt-get -y install anydesk
 set -e
 
-# --- 5. Google Chrome (install .deb) ---
-echo "Installing Google Chrome..."
 wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 apt-get -y install /tmp/chrome.deb || apt-get -fy install
 
-# --- 6. SimplePOSPrint (fetch & install as systemd service) ---
-echo "Setting up SimplePOSPrint..."
+# --- 3. SimplePOSPrint (Python venv, service, plugin)
 SIMPLEPOS_DIR="/opt/spp"
 SPP_USER="spp"
 if ! id "$SPP_USER" >/dev/null 2>&1; then
@@ -80,7 +68,7 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# --- 7. Imagemode Chrome extension from plugins dir ---
+# --- 4. Imagemode Chrome extension
 set +e
 PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
 EXT_DST="/opt/chrome-extensions/imagemode"
@@ -94,7 +82,7 @@ else
 fi
 set -e
 
-# --- 8. User, LightDM autologin, Openbox config, menu, wallpaper ---
+# --- 5. User till, LightDM, Openbox, rc.xml/menu, wallpaper
 USERNAME="till"
 HOMEDIR="/home/$USERNAME"
 
@@ -104,11 +92,10 @@ if ! id "$USERNAME" >/dev/null 2>&1; then
   usermod -aG sudo "$USERNAME"
 fi
 
-# Safe LightDM config (autologin and display manager)
+# --- LightDM config for autologin and Openbox session
 if [ -f /etc/lightdm/lightdm.conf ]; then
   sed -i 's/^#autologin-user=.*/autologin-user=till/' /etc/lightdm/lightdm.conf
   sed -i '/^\[Seat:\*\]/a autologin-user=till' /etc/lightdm/lightdm.conf
-  # Force Openbox session for till in LightDM
   if ! grep -q "user-session=openbox" /etc/lightdm/lightdm.conf; then
     sed -i '/^\[Seat:\*\]/a user-session=openbox' /etc/lightdm/lightdm.conf
   fi
@@ -117,30 +104,27 @@ else
 fi
 ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.service
 
-# Write .dmrc so till always logs in with Openbox
 echo -e "[Desktop]\nSession=openbox" > "$HOMEDIR/.dmrc"
 chown $USERNAME:$USERNAME "$HOMEDIR/.dmrc"
 
-# Robust Openbox config/menu block
-set +e
-
+# --- Openbox: menu, autostart (with debug), wallpaper
 mkdir -p "$HOMEDIR/.config/openbox"
+mkdir -p "$HOMEDIR/Pictures"
 
-# Autostart script with debug
-cat > "$HOMEDIR/.config/openbox/autostart" <<EOFA
+# Autostart script with debug info
+cat > "$HOMEDIR/.config/openbox/autostart" <<'EOFA'
 #!/bin/bash
-echo "AUTOSTART: running \$(date)" > /tmp/taov-autostart.log
-env >> /tmp/taov-autostart.log
-which google-chrome >> /tmp/taov-autostart.log
+echo "AUTOSTART USER: $(whoami)" > /tmp/taov-autostart.log
+echo "AUTOSTART HOME: $HOME" >> /tmp/taov-autostart.log
+ls -l ~/.config/openbox/autostart >> /tmp/taov-autostart.log
+ls -l ~/.xsession >> /tmp/taov-autostart.log
 matchbox-keyboard &
-google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
-echo "AUTOSTART: done \$(date)" >> /tmp/taov-autostart.log
+google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
+echo "AUTOSTART: done $(date)" >> /tmp/taov-autostart.log
 EOFA
-chmod +x "$HOMEDIR/.config/openbox/autostart"
 
-# Custom menu.xml
-MENU_XML="$HOMEDIR/.config/openbox/menu.xml"
-cat > "$MENU_XML" <<EOMENU
+# Menu XML
+cat > "$HOMEDIR/.config/openbox/menu.xml" <<EOMENU
 <menu id="root-menu" label="TAOV Menu">
   <item label="New Lightspeed Tab">
     <action name="Execute">
@@ -149,12 +133,12 @@ cat > "$MENU_XML" <<EOMENU
   </item>
   <item label="Non-Kiosk Chrome">
     <action name="Execute">
-      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
+      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
     </action>
   </item>
   <item label="SimplePOSPrint Config">
     <action name="Execute">
-      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
+      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
     </action>
   </item>
 </menu>
@@ -173,14 +157,31 @@ awk '/<\/keyboard>/{
   print "    </keybind>"
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
 
+# Wallpaper (download and set)
+wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/TAOV-Wallpaper.jpg
+cat > "$HOMEDIR/.fehbg" <<EOFB
+feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg
+EOFB
+echo "feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg" >> "$HOMEDIR/.config/openbox/autostart"
+
+# .xsession (must be executable and owned by till)
+echo "exec openbox-session" > "$HOMEDIR/.xsession"
+chmod 755 "$HOMEDIR/.xsession"
+chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
+
+# Ownership and permissions fix
 chown -R $USERNAME:$USERNAME "$HOMEDIR/.config/openbox"
+chmod -R u+rwX,go+rX "$HOMEDIR/.config/openbox"
+chown $USERNAME:$USERNAME "$HOMEDIR/.fehbg"
+chmod 644 "$HOMEDIR/.fehbg"
+chown -R $USERNAME:$USERNAME "$HOMEDIR/Pictures"
 
 sudo -u $USERNAME openbox --reconfigure || true
 
-# --- Ensure TAOVLINUX repo is present and up to date ---
+# --- 6. GRUB splash and wallpaper from TAOVLINUX repo (safe, non-blocking)
+set +e
 REPO_URL="https://github.com/Mike-TOAV/TAOVLINUX.git"
 REPO_DIR="/opt/TAOVLINUX"
-
 if [ ! -d "$REPO_DIR" ]; then
   echo "Cloning TAOVLINUX repo to $REPO_DIR..."
   git clone "$REPO_URL" "$REPO_DIR"
@@ -191,7 +192,7 @@ else
   cd -
 fi
 
-# --- Set GRUB background image ---
+# Set GRUB background image if present
 GRUB_BG_SRC="$REPO_DIR/wallpapers/taov-grub.png"
 GRUB_BG_DST="/boot/grub/taov-grub.png"
 if [ -f "$GRUB_BG_SRC" ]; then
@@ -207,23 +208,6 @@ if [ -f "$GRUB_BG_SRC" ]; then
 else
   echo "GRUB background image not found!"
 fi
-
-# --- Set desktop wallpaper ---
-WALLPAPER_SRC="$REPO_DIR/wallpapers/TAOV-Wallpaper.jpg"
-WALLPAPER_DST="$HOMEDIR/Pictures/taov-wallpaper.jpg"
-if [ -f "$WALLPAPER_SRC" ]; then
-  cp "$WALLPAPER_SRC" "$WALLPAPER_DST"
-  chown "$USERNAME:$USERNAME" "$WALLPAPER_DST"
-  echo "Wallpaper copied to $WALLPAPER_DST"
-else
-  echo "Desktop wallpaper not found!"
-fi
-
-# Set Openbox as default session for till user
-echo "exec openbox-session" > "$HOMEDIR/.xsession"
-chmod +x "$HOMEDIR/.xsession"
-chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
-
 set -e
 
 echo "===== TAOV Till Post-Install Setup Complete ====="
