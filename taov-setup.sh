@@ -79,21 +79,30 @@ systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
 # --- 6. Imagemode Chrome extension from plugins dir ---
+set +e
 PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
 EXT_DST="/opt/chrome-extensions/imagemode"
+echo "Copying Imagemode Chrome extension from $PLUGIN_SRC to $EXT_DST..."
 mkdir -p "$EXT_DST"
-cp -r "$PLUGIN_SRC"/* "$EXT_DST"
-
-# --- 7. User & Openbox autologin, kiosk, wallpaper, menu ---
+if [ -d "$PLUGIN_SRC" ]; then
+  cp -r "$PLUGIN_SRC"/* "$EXT_DST"
+  echo "Imagemode extension copied."
+else
+  echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
+fi
+set -e
+# --- 7. User, LightDM autologin, Openbox kiosk, menu, wallpaper (robust) ---
 USERNAME="till"
 HOMEDIR="/home/$USERNAME"
+
+# Ensure till user exists (guarded, idempotent)
 if ! id "$USERNAME" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$USERNAME"
   echo "$USERNAME:T@OV2025!" | chpasswd
   usermod -aG sudo "$USERNAME"
 fi
 
-# --- 8. Safe LightDM config (guard against missing conf file) ---
+# Safe LightDM config (autologin and display manager)
 if [ -f /etc/lightdm/lightdm.conf ]; then
   sed -i 's/^#autologin-user=.*/autologin-user=till/' /etc/lightdm/lightdm.conf
   sed -i '/^\[Seat:\*\]/a autologin-user=till' /etc/lightdm/lightdm.conf
@@ -102,14 +111,19 @@ else
 fi
 ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.service
 
+# --- Robust Openbox config ---
+set +e
+
 mkdir -p "$HOMEDIR/.config/openbox"
+
+# Autostart script
 cat > "$HOMEDIR/.config/openbox/autostart" <<EOFA
 #!/bin/bash
 matchbox-keyboard &
 google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
 EOFA
-chown -R $USERNAME:$USERNAME "$HOMEDIR/.config"
 
+# Custom menu.xml
 MENU_XML="$HOMEDIR/.config/openbox/menu.xml"
 cat > "$MENU_XML" <<EOMENU
 <menu id="root-menu" label="TAOV Menu">
@@ -130,8 +144,8 @@ cat > "$MENU_XML" <<EOMENU
   </item>
 </menu>
 EOMENU
-chown $USERNAME:$USERNAME "$MENU_XML"
 
+# rc.xml: Add Ctrl+Alt+Space hotkey for menu
 OPENBOX_RC="$HOMEDIR/.config/openbox/rc.xml"
 if [ ! -f "$OPENBOX_RC" ]; then
   cp /etc/xdg/openbox/rc.xml "$OPENBOX_RC"
@@ -143,8 +157,14 @@ awk '/<\/keyboard>/{
   print "      </action>"
   print "    </keybind>"
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
-chown $USERNAME:$USERNAME "$OPENBOX_RC"
 
+# Ownership fix
+chown -R $USERNAME:$USERNAME "$HOMEDIR/.config/openbox"
+
+# Attempt Openbox reconfigure for till user (non-fatal if fails)
+sudo -u $USERNAME openbox --reconfigure || true
+
+# Wallpaper setup
 mkdir -p "$HOMEDIR/Pictures"
 wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/TAOV-Wallpaper.jpg
 cat > "$HOMEDIR/.fehbg" <<EOFB
@@ -153,9 +173,11 @@ EOFB
 echo "feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg" >> "$HOMEDIR/.config/openbox/autostart"
 chown $USERNAME:$USERNAME "$HOMEDIR/.fehbg" "$HOMEDIR/.config/openbox/autostart"
 
-# --- 9. Set Openbox as default session for till user ---
+# Set Openbox as default session for till user
 echo "exec openbox-session" > "$HOMEDIR/.xsession"
 chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
+
+set -e
 
 echo "===== TAOV Till Post-Install Setup Complete ====="
 
