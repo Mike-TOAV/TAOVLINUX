@@ -7,7 +7,7 @@ echo "===== TAOV Till Post-Install Setup ====="
 
 # --- 1. Debloat: Remove unwanted packages
 sed -i '/cdrom:/d' /etc/apt/sources.list
-apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter || true
+apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter* google-chrome  || true
 apt-get autoremove -y || true
 
 # --- 2. Core: LightDM, CUPS, network/printer, AnyDesk, Chrome
@@ -68,19 +68,19 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# # --- 4. Imagemode Chrome extension
-# set +e
-# PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
-# EXT_DST="/opt/chrome-extensions/imagemode"
-# echo "Copying Imagemode Chrome extension from $PLUGIN_SRC to $EXT_DST..."
-# mkdir -p "$EXT_DST"
-# if [ -d "$PLUGIN_SRC" ]; then
-#   cp -r "$PLUGIN_SRC"/* "$EXT_DST"
-#   echo "Imagemode extension copied."
-# else
-#   echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
-# fi
-# set -e
+# --- 4. Imagemode Chrome extension
+set +e
+PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
+EXT_DST="/opt/chrome-extensions/imagemode"
+echo "Copying Imagemode Chrome extension from $PLUGIN_SRC to $EXT_DST..."
+mkdir -p "$EXT_DST"
+if [ -d "$PLUGIN_SRC" ]; then
+  cp -r "$PLUGIN_SRC"/* "$EXT_DST"
+  echo "Imagemode extension copied."
+else
+  echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
+fi
+set -e
 
 # --- 5. User till, LightDM, Openbox, rc.xml/menu, wallpaper
 USERNAME="till"
