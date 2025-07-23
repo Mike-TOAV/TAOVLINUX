@@ -46,10 +46,6 @@ apt-get update
 apt-get -y install anydesk
 set -e
 
-# --- 6. Chrome install (ensure no snap, use .deb)
-wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-apt-get -y install /tmp/chrome.deb || apt-get -fy install
-
 # --- 7. SimplePOSPrint (Python venv, service, plugin)
 SIMPLEPOS_DIR="/opt/spp"
 SPP_USER="spp"
@@ -214,6 +210,24 @@ if [ -f "$GRUB_BG_SRC" ]; then
   echo "GRUB background image set!"
 else
   echo "GRUB background image not found!"
+fi
+set -e
+
+# --- 6. Chrome install (ensure no snap, use .deb)
+wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+apt-get -y install /tmp/chrome.deb || apt-get -fy install
+
+# --- 8. Imagemode Chrome extension (non-blocking)
+set +e
+PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
+EXT_DST="/opt/chrome-extensions/imagemode"
+echo "Copying Imagemode Chrome extension from $PLUGIN_SRC to $EXT_DST..."
+mkdir -p "$EXT_DST"
+if [ -d "$PLUGIN_SRC" ]; then
+  cp -r "$PLUGIN_SRC"/* "$EXT_DST"
+  echo "Imagemode extension copied."
+else
+  echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
 fi
 set -e
 
