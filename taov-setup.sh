@@ -214,8 +214,27 @@ fi
 set -e
 
 # --- 6. Chrome install (ensure no snap, use .deb)
-wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-apt-get -y install /tmp/chrome.deb || apt-get -fy install
+CHROME_DEB="/tmp/chrome.deb"
+wget -O "$CHROME_DEB" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+
+# Retry download up to 2 more times if dpkg-deb -I fails
+for i in 1 2; do
+  if dpkg-deb -I "$CHROME_DEB" >/dev/null 2>&1; then
+    break
+  else
+    echo "WARN: Chrome .deb corrupted or incomplete, retrying ($i)..."
+    rm -f "$CHROME_DEB"
+    sleep 1
+    wget -O "$CHROME_DEB" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+  fi
+done
+
+if ! dpkg-deb -I "$CHROME_DEB" >/dev/null 2>&1; then
+  echo "ERROR: Chrome .deb is still corrupt after retries! Exiting setup."
+  exit 1
+fi
+
+apt-get -y install "$CHROME_DEB" || apt-get -fy install
 
 # --- 8. Imagemode Chrome extension (non-blocking)
 set +e
