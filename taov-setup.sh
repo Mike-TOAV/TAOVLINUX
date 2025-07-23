@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 set -e
 exec > >(tee /root/taov-setup.log) 2>&1
 set -x
@@ -234,7 +236,7 @@ if ! dpkg-deb -I "$CHROME_DEB" >/dev/null 2>&1; then
   exit 1
 fi
 
-apt-get -y install "$CHROME_DEB" || apt-get -fy install
+dpkg -i "$CHROME_DEB" || apt-get -fy install
 
 # --- 8. Imagemode Chrome extension (non-blocking)
 set +e
