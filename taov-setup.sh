@@ -5,23 +5,40 @@ set -x
 
 echo "===== TAOV Till Post-Install Setup ====="
 
+USERNAME="till"
+HOMEDIR="/home/$USERNAME"
+
 # --- 1. Debloat: Remove unwanted packages
 sed -i '/cdrom:/d' /etc/apt/sources.list
 apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter  || true
 apt-get autoremove -y || true
+
 set +e
 apt-get purge -y google-chrome-stable chromium chromium-browser snapd
-rm -rf /home/till/.config/google-chrome /home/till/snap /snap
+rm -rf "$HOMEDIR/.config/google-chrome" "$HOMEDIR/snap" /snap
 set -e
-# --- 2. Core: LightDM, CUPS, network/printer, AnyDesk, Chrome
+
+# --- 2. Core: LightDM, CUPS, etc.
 apt-get update
 apt-get install -y lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox matchbox-keyboard \
     python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator fonts-dejavu fonts-liberation mesa-utils feh
 
 systemctl enable cups
 systemctl start cups
-usermod -aG lpadmin till
 
+# --- 3. User creation and home dir
+if ! id "$USERNAME" >/dev/null 2>&1; then
+  useradd -m -s /bin/bash "$USERNAME"
+  echo "$USERNAME:T@OV2025!" | chpasswd
+  usermod -aG sudo "$USERNAME"
+fi
+mkdir -p "$HOMEDIR"
+chown "$USERNAME:$USERNAME" "$HOMEDIR"
+
+# --- 4. User group for printing
+usermod -aG lpadmin $USERNAME
+
+# --- 5. AnyDesk install
 set +e
 wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | apt-key add -
 echo "deb http://deb.anydesk.com/ all main" > /etc/apt/sources.list.d/anydesk.list
@@ -29,10 +46,11 @@ apt-get update
 apt-get -y install anydesk
 set -e
 
+# --- 6. Chrome install (ensure no snap, use .deb)
 wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 apt-get -y install /tmp/chrome.deb || apt-get -fy install
 
-# --- 3. SimplePOSPrint (Python venv, service, plugin)
+# --- 7. SimplePOSPrint (Python venv, service, plugin)
 SIMPLEPOS_DIR="/opt/spp"
 SPP_USER="spp"
 if ! id "$SPP_USER" >/dev/null 2>&1; then
@@ -71,7 +89,7 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# --- 4. Imagemode Chrome extension
+# --- 8. Imagemode Chrome extension (non-blocking)
 set +e
 PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
 EXT_DST="/opt/chrome-extensions/imagemode"
@@ -85,17 +103,7 @@ else
 fi
 set -e
 
-# --- 5. User till, LightDM, Openbox, rc.xml/menu, wallpaper
-USERNAME="till"
-HOMEDIR="/home/$USERNAME"
-
-if ! id "$USERNAME" >/dev/null 2>&1; then
-  useradd -m -s /bin/bash "$USERNAME"
-  echo "$USERNAME:T@OV2025!" | chpasswd
-  usermod -aG sudo "$USERNAME"
-fi
-
-# --- LightDM config for autologin and Openbox session
+# --- 9. LightDM config for autologin and Openbox session
 if [ -f /etc/lightdm/lightdm.conf ]; then
   sed -i 's/^#autologin-user=.*/autologin-user=till/' /etc/lightdm/lightdm.conf
   sed -i '/^\[Seat:\*\]/a autologin-user=till' /etc/lightdm/lightdm.conf
@@ -110,11 +118,10 @@ ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.s
 echo -e "[Desktop]\nSession=openbox" > "$HOMEDIR/.dmrc"
 chown $USERNAME:$USERNAME "$HOMEDIR/.dmrc"
 
-# --- Openbox: menu, autostart (with debug), wallpaper
+# --- 10. Openbox: menu, autostart (with debug), wallpaper
 mkdir -p "$HOMEDIR/.config/openbox"
 mkdir -p "$HOMEDIR/Pictures"
 
-# Autostart script with debug info
 cat > "$HOMEDIR/.config/openbox/autostart" <<'EOFA'
 #!/bin/bash
 echo "AUTOSTART USER: $(whoami)" > /tmp/taov-autostart.log
@@ -126,8 +133,7 @@ google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-san
 echo "AUTOSTART: done $(date)" >> /tmp/taov-autostart.log
 EOFA
 
-# Menu XML
-cat > "$HOMEDIR/.config/openbox/menu.xml" <<EOMENU
+cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
 <menu id="root-menu" label="TAOV Menu">
   <item label="New Lightspeed Tab">
     <action name="Execute">
@@ -147,7 +153,6 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<EOMENU
 </menu>
 EOMENU
 
-# rc.xml: Add Ctrl+Alt+Space hotkey for menu
 OPENBOX_RC="$HOMEDIR/.config/openbox/rc.xml"
 if [ ! -f "$OPENBOX_RC" ]; then
   cp /etc/xdg/openbox/rc.xml "$OPENBOX_RC"
@@ -160,19 +165,16 @@ awk '/<\/keyboard>/{
   print "    </keybind>"
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
 
-# Wallpaper (download and set)
 wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/TAOV-Wallpaper.jpg
-cat > "$HOMEDIR/.fehbg" <<EOFB
+cat > "$HOMEDIR/.fehbg" <<EOF
 feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg
-EOFB
+EOF
 echo "feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg" >> "$HOMEDIR/.config/openbox/autostart"
 
-# .xsession (must be executable and owned by till)
 echo "exec openbox-session" > "$HOMEDIR/.xsession"
 chmod 755 "$HOMEDIR/.xsession"
 chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
 
-# Ownership and permissions fix
 chown -R $USERNAME:$USERNAME "$HOMEDIR/.config/openbox"
 chmod -R u+rwX,go+rX "$HOMEDIR/.config/openbox"
 chown $USERNAME:$USERNAME "$HOMEDIR/.fehbg"
@@ -181,7 +183,10 @@ chown -R $USERNAME:$USERNAME "$HOMEDIR/Pictures"
 
 sudo -u $USERNAME openbox --reconfigure || true
 
-# --- 6. GRUB splash and wallpaper from TAOVLINUX repo (safe, non-blocking)
+rm -f "$HOMEDIR/.Xauthority"
+chown $USERNAME:$USERNAME "$HOMEDIR"
+
+# --- 11. GRUB splash and wallpaper from TAOVLINUX repo (non-blocking)
 set +e
 REPO_URL="https://github.com/Mike-TOAV/TAOVLINUX.git"
 REPO_DIR="/opt/TAOVLINUX"
@@ -195,7 +200,6 @@ else
   cd -
 fi
 
-# Set GRUB background image if present
 GRUB_BG_SRC="$REPO_DIR/wallpapers/taov-grub.png"
 GRUB_BG_DST="/boot/grub/taov-grub.png"
 if [ -f "$GRUB_BG_SRC" ]; then
@@ -215,5 +219,5 @@ set -e
 
 echo "===== TAOV Till Post-Install Setup Complete ====="
 
-# --- 10. Self-cleanup
+# --- 12. Self-cleanup
 rm -- "$0"
