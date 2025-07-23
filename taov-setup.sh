@@ -10,6 +10,15 @@ echo "===== TAOV Till Post-Install Setup ====="
 USERNAME="till"
 HOMEDIR="/home/$USERNAME"
 
+# --- 3. User creation and home dir
+if ! id "$USERNAME" >/dev/null 2>&1; then
+  useradd -m -s /bin/bash "$USERNAME"
+  echo "$USERNAME:T@OV2025!" | chpasswd
+  usermod -aG sudo "$USERNAME"
+fi
+mkdir -p "$HOMEDIR"
+chown "$USERNAME:$USERNAME" "$HOMEDIR"
+
 # --- 1. Debloat: Remove unwanted packages
 sed -i '/cdrom:/d' /etc/apt/sources.list
 apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter  || true
@@ -27,15 +36,6 @@ apt-get install -y lightdm cups system-config-printer network-manager network-ma
 
 systemctl enable cups
 systemctl start cups
-
-# --- 3. User creation and home dir
-if ! id "$USERNAME" >/dev/null 2>&1; then
-  useradd -m -s /bin/bash "$USERNAME"
-  echo "$USERNAME:T@OV2025!" | chpasswd
-  usermod -aG sudo "$USERNAME"
-fi
-mkdir -p "$HOMEDIR"
-chown "$USERNAME:$USERNAME" "$HOMEDIR"
 
 # --- 4. User group for printing
 usermod -aG lpadmin $USERNAME
@@ -133,21 +133,21 @@ EOFA
 
 cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
 <menu id="root-menu" label="TAOV Menu">
-  <item label="New Lightspeed Tab">
-    <action name="Execute">
-      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
-    </action>
-  </item>
-  <item label="Non-Kiosk Chrome">
-    <action name="Execute">
-      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
-    </action>
-  </item>
-  <item label="SimplePOSPrint Config">
-    <action name="Execute">
-      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
-    </action>
-  </item>
+<item label="New Lightspeed Tab">
+<action name="Execute">
+<command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
+</action>
+</item>
+<item label="Non-Kiosk Chrome">
+<action name="Execute">
+<command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
+</action>
+</item>
+<item label="SimplePOSPrint Config">
+<action name="Execute">
+<command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
+</action>
+</item>
 </menu>
 EOMENU
 
