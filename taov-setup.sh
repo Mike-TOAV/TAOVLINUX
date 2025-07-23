@@ -7,7 +7,7 @@ echo "===== TAOV Till Post-Install Setup ====="
 
 # --- 1. Debloat: Remove unwanted packages
 sed -i '/cdrom:/d' /etc/apt/sources.list
-apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter* google-chrome-stable  || true
+apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter* google-chrome-stable* chromium* chromium-browser  || true
 apt-get autoremove -y || true
 
 # --- 2. Core: LightDM, CUPS, network/printer, AnyDesk, Chrome
