@@ -122,6 +122,20 @@ EOFA
 chmod +x "$HOMEDIR/.config/openbox/autostart"
 chown $USERNAME:$USERNAME "$HOMEDIR/.config/openbox/autostart"
 
+OPENBOX_RC="$HOMEDIR/.config/openbox/rc.xml"
+if [ ! -f "$OPENBOX_RC" ]; then
+  cp /etc/xdg/openbox/rc.xml "$OPENBOX_RC"
+  chown $USERNAME:$USERNAME "$OPENBOX_RC"
+fi
+awk '/<\/keyboard>/{
+  print "    <keybind key=\"C-A-space\">"
+  print "      <action name=\"ShowMenu\">"
+  print "        <menu>root-menu</menu>"
+  print "      </action>"
+  print "    </keybind>"
+}1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
+chown $USERNAME:$USERNAME "$OPENBOX_RC"
+
 cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
 <menu id="root-menu" label="TAOV Menu">
   <item label="New Lightspeed Tab">
@@ -142,20 +156,6 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
 </menu>
 EOMENU
 chown $USERNAME:$USERNAME "$HOMEDIR/.config/openbox/menu.xml"
-
-OPENBOX_RC="$HOMEDIR/.config/openbox/rc.xml"
-if [ ! -f "$OPENBOX_RC" ]; then
-  cp /etc/xdg/openbox/rc.xml "$OPENBOX_RC"
-  chown $USERNAME:$USERNAME "$OPENBOX_RC"
-fi
-awk '/<\/keyboard>/{
-  print "    <keybind key=\"C-A-space\">"
-  print "      <action name=\"ShowMenu\">"
-  print "        <menu>root-menu</menu>"
-  print "      </action>"
-  print "    </keybind>"
-}1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
-chown $USERNAME:$USERNAME "$OPENBOX_RC"
 
 # Wallpaper download and chown
 wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/TAOV-Wallpaper.jpg
