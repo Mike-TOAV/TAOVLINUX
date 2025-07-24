@@ -31,7 +31,7 @@ apt-get update
 apt-get install -y \
   lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox \
   python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator \
-  fonts-dejavu fonts-liberation fonts-noto fonts-ubuntu mesa-utils feh konsole plank onboard chromium xcursor-themes
+  fonts-dejavu fonts-liberation fonts-noto mesa-utils feh konsole plank onboard chromium xcursor-themes
 
 systemctl enable cups
 systemctl start cups
@@ -118,6 +118,14 @@ ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.s
 echo -e "[Desktop]\nSession=openbox" > "$HOMEDIR/.dmrc"
 chown $USERNAME:$USERNAME "$HOMEDIR/.dmrc"
 
+# --- Install Poppins font from Google Fonts ---
+echo "Installing Poppins font..."
+POPPINS_DIR="/usr/local/share/fonts/truetype/poppins"
+mkdir -p "$POPPINS_DIR"
+cd /tmp
+wget -q https://github.com/google/fonts/raw/main/ofl/poppins/Poppins%5Bwght%5D.ttf -O "$POPPINS_DIR/Poppins.ttf"
+fc-cache -f -v
+
 # 9. Openbox: Modern theme, touch settings, menu, dock autostart, wallpaper
 # ---- Download & install a TAOV Openbox theme (dark, modern, big touch targets)
 THEME_DIR="/usr/share/themes/Obsidian-2"
@@ -151,9 +159,14 @@ if [ ! -f "$OPENBOX_RC" ]; then
   cp /etc/xdg/openbox/rc.xml "$OPENBOX_RC"
 fi
 # Patch in new theme, larger fonts, big border
-sed -i \
-  -e 's|<theme>.*</theme>|<theme><name>Obsidian-2</name><titleLayout>NLIMC</titleLayout><font place="ActiveWindow">Ubuntu Bold 22</font><font place="InactiveWindow">Ubuntu 18</font><font place="MenuHeader">Ubuntu Bold 22</font><font place="MenuItem">Ubuntu 20</font><font place="ActiveOnScreenDisplay">Ubuntu 26</font><font place="InactiveOnScreenDisplay">Ubuntu 22</font><border><width>8</width></border></theme>|' \
-  "$OPENBOX_RC"
+sed -i '
+  s|<font place="ActiveWindow">.*</font>|<font place="ActiveWindow">Poppins Bold 22</font>|g;
+  s|<font place="InactiveWindow">.*</font>|<font place="InactiveWindow">Poppins 18</font>|g;
+  s|<font place="MenuHeader">.*</font>|<font place="MenuHeader">Poppins Bold 22</font>|g;
+  s|<font place="MenuItem">.*</font>|<font place="MenuItem">Poppins 20</font>|g;
+  s|<font place="ActiveOnScreenDisplay">.*</font>|<font place="ActiveOnScreenDisplay">Poppins 26</font>|g;
+  s|<font place="InactiveOnScreenDisplay">.*</font>|<font place="InactiveOnScreenDisplay">Poppins 22</font>|g;
+' "$OPENBOX_RC"
 chown $USERNAME:$USERNAME "$OPENBOX_RC"
 
 # --- Menu.xml (TAOV + admin + Konsole)
