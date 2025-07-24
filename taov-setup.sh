@@ -16,6 +16,17 @@ if ! id "$USERNAME" >/dev/null 2>&1; then
 fi
 mkdir -p "$HOMEDIR"
 chown "$USERNAME:$USERNAME" "$HOMEDIR"
+cat > /etc/fonts/local.conf <<EOF
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <match target="pattern">
+    <test qual="any" name="family"><string>sans-serif</string></test>
+    <edit name="family" mode="prepend" binding="strong"><string>Poppins</string></edit>
+  </match>
+</fontconfig>
+EOF
+fc-cache -f -v
 
 # 2. Remove cruft and Chrome
 sed -i '/cdrom:/d' /etc/apt/sources.list
@@ -31,7 +42,7 @@ apt-get update
 apt-get install -y \
   lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox \
   python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator \
-  fonts-dejavu fonts-liberation fonts-noto mesa-utils feh konsole plank onboard chromium xcursor-themes
+  mesa-utils feh konsole plank onboard chromium xcursor-themes
 
 systemctl enable cups
 systemctl start cups
