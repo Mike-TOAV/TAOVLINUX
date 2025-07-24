@@ -116,7 +116,7 @@ echo "AUTOSTART HOME: $HOME" >> /tmp/taov-autostart.log
 ls -l ~/.config/openbox/autostart >> /tmp/taov-autostart.log
 ls -l ~/.xsession >> /tmp/taov-autostart.log
 matchbox-keyboard &
-google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
+google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
 echo "AUTOSTART: done $(date)" >> /tmp/taov-autostart.log
 EOFA
 chmod +x "$HOMEDIR/.config/openbox/autostart"
@@ -158,7 +158,7 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
     </item>
     <item label="SimplePOSPrint Config">
       <action name="Execute">
-        <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
+        <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
       </action>
     </item>
     <item label="Konsole">
