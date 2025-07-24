@@ -137,6 +137,8 @@ awk '/<\/keyboard>/{
 chown $USERNAME:$USERNAME "$OPENBOX_RC"
 
 cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu>
 <menu id="root-menu" label="TAOV Menu">
   <item label="New Lightspeed Tab">
     <action name="Execute">
@@ -154,6 +156,7 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
     </action>
   </item>
 </menu>
+</openbox_menu>
 EOMENU
 chown $USERNAME:$USERNAME "$HOMEDIR/.config/openbox/menu.xml"
 
