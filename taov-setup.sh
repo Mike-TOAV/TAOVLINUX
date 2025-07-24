@@ -8,7 +8,7 @@ echo "===== TAOV Till Post-Install Setup ====="
 USERNAME="till"
 HOMEDIR="/home/$USERNAME"
 
-# --- 1. User creation and home dir permissions (before anything else)
+# --- 1. User creation (first!)
 if ! id "$USERNAME" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$USERNAME"
   echo "$USERNAME:T@OV2025!" | chpasswd
@@ -17,28 +17,25 @@ fi
 mkdir -p "$HOMEDIR"
 chown "$USERNAME:$USERNAME" "$HOMEDIR"
 
-# --- 2. Debloat & Remove Chrome, Snap
+# --- 2. Debloat (remove cruft)
 sed -i '/cdrom:/d' /etc/apt/sources.list
-apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter  || true
+apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter || true
 apt-get autoremove -y || true
-
 set +e
 apt-get purge -y google-chrome-stable chromium chromium-browser snapd
 rm -rf "$HOMEDIR/.config/google-chrome" "$HOMEDIR/snap" /snap
 set -e
 
-# --- 3. Core system install (always as root)
+# --- 3. Core packages and services
 apt-get update
 apt-get install -y lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox matchbox-keyboard \
     python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator fonts-dejavu fonts-liberation mesa-utils feh konsole
 
 systemctl enable cups
 systemctl start cups
+usermod -aG lpadmin "$USERNAME"
 
-# --- 4. Printing permissions
-usermod -aG lpadmin $USERNAME
-
-# --- 5. AnyDesk (robust)
+# --- 4. AnyDesk (ignore failures)
 set +e
 wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | apt-key add -
 echo "deb http://deb.anydesk.com/ all main" > /etc/apt/sources.list.d/anydesk.list
@@ -46,7 +43,7 @@ apt-get update
 apt-get -y install anydesk
 set -e
 
-# --- 6. SimplePOSPrint (Python venv, service, plugin)
+# --- 5. SimplePOSPrint (systemd, venv, plugins)
 SIMPLEPOS_DIR="/opt/spp"
 SPP_USER="spp"
 if ! id "$SPP_USER" >/dev/null 2>&1; then
@@ -85,7 +82,36 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# --- 7. Create user config dirs and set ownership IMMEDIATELY
+# --- 6. Imagemode Chrome extension (copy for policy load, not via --load-extension)
+PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
+EXT_DST="/opt/chrome-extensions/imagemode"
+mkdir -p "$EXT_DST"
+if [ -d "$PLUGIN_SRC" ]; then
+  cp -r "$PLUGIN_SRC"/* "$EXT_DST"
+else
+  echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
+fi
+chown -R $USERNAME:$USERNAME "$EXT_DST"
+
+# --- 7. Chrome Enterprise Policy to force-load unpacked extension
+POLICY_DIR="/etc/opt/chrome/policies/managed"
+POLICY_FILE="$POLICY_DIR/taov-imagemode-policy.json"
+mkdir -p "$POLICY_DIR"
+cat > "$POLICY_FILE" <<EOF
+{
+  "ExtensionSettings": {
+    "*": {
+      "installation_mode": "allowed"
+    },
+    "file:///opt/chrome-extensions/imagemode": {
+      "installation_mode": "force_installed"
+    }
+  }
+}
+EOF
+chmod 644 "$POLICY_FILE"
+
+# --- 8. User config directories and permissions
 mkdir -p "$HOMEDIR/.config/openbox"
 mkdir -p "$HOMEDIR/Pictures"
 chown -R $USERNAME:$USERNAME "$HOMEDIR/.config"
@@ -93,7 +119,7 @@ chown -R $USERNAME:$USERNAME "$HOMEDIR/Pictures"
 chmod -R u+rwX,go+rX "$HOMEDIR/.config"
 chmod -R u+rwX,go+rX "$HOMEDIR/Pictures"
 
-# --- 8. LightDM config for autologin and Openbox session
+# --- 9. LightDM config (autologin and openbox session)
 if [ -f /etc/lightdm/lightdm.conf ]; then
   sed -i 's/^#autologin-user=.*/autologin-user=till/' /etc/lightdm/lightdm.conf
   sed -i '/^\[Seat:\*\]/a autologin-user=till' /etc/lightdm/lightdm.conf
@@ -108,16 +134,11 @@ ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.s
 echo -e "[Desktop]\nSession=openbox" > "$HOMEDIR/.dmrc"
 chown $USERNAME:$USERNAME "$HOMEDIR/.dmrc"
 
-# --- 9. Openbox: menu, autostart, rc.xml, wallpaper (create+chown in sequence)
+# --- 10. Openbox: menu, autostart, rc.xml, wallpaper
 cat > "$HOMEDIR/.config/openbox/autostart" <<'EOFA'
 #!/bin/bash
-echo "AUTOSTART USER: $(whoami)" > /tmp/taov-autostart.log
-echo "AUTOSTART HOME: $HOME" >> /tmp/taov-autostart.log
-ls -l ~/.config/openbox/autostart >> /tmp/taov-autostart.log
-ls -l ~/.xsession >> /tmp/taov-autostart.log
 matchbox-keyboard &
-google-chrome --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
-echo "AUTOSTART: done $(date)" >> /tmp/taov-autostart.log
+google-chrome --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
 EOFA
 chmod +x "$HOMEDIR/.config/openbox/autostart"
 chown $USERNAME:$USERNAME "$HOMEDIR/.config/openbox/autostart"
@@ -139,11 +160,11 @@ awk '/<\/keyboard>/{
   print "       </action>"
   print "     </keybind>"
   print "    <keybind key=\"C-A-t\">"
-  print "       <action name="Execute">
-  print "          <command>konsole</command>
-  print "          <startupnotify><enabled>yes</enabled></startupnotify>
-  print "        </action>
-  print "     </keybind>"  
+  print "       <action name=\"Execute\">"
+  print "          <command>konsole</command>"
+  print "          <startupnotify><enabled>yes</enabled></startupnotify>"
+  print "        </action>"
+  print "     </keybind>"
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
 chown $USERNAME:$USERNAME "$OPENBOX_RC"
 
@@ -154,41 +175,38 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
   <menu id="root-menu" label="TAOV Menu">
     <item label="New Lightspeed Tab">
       <action name="Execute">
-        <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
+        <command>google-chrome --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
       </action>
     </item>
     <item label="Non-Kiosk Chrome">
       <action name="Execute">
-        <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
+        <command>google-chrome --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
       </action>
     </item>
     <item label="SimplePOSPrint Config">
       <action name="Execute">
-        <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
+        <command>google-chrome --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
       </action>
     </item>
   </menu>
-  
-  <!-- System applications menu, provided by Openbox -->
+  <!-- Admin menu -->
   <menu id="admin-menu" label="Admin Menu">
-  <menu id="applications-menu" label="Applications" execute="/usr/bin/obamenu"/>
-  <separator />
-  <item label="Konsole">
-   <action name="Execute">
-    <command>konsole</command>
-     <startupnotify><enabled>yes</enabled></startupnotify>
-   </action>
+   <menu id="applications-menu" label="Applications" execute="/usr/bin/obamenu"/>
+    <item label="Konsole">
+      <action name="Execute">
+        <command>konsole</command>
+        <startupnotify><enabled>yes</enabled></startupnotify>
+      </action>
     </item>
-  <separator />
-    <item label="restart">
-     <action name="restart" />
-    </item>   
+    <separator />
+    <item label="Restart Openbox">
+      <action name="Restart" />
+    </item>
   </menu>
 </openbox_menu>
 EOMENU
 chown $USERNAME:$USERNAME "$HOMEDIR/.config/openbox/menu.xml"
 
-# Wallpaper download and chown
 wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/TAOV-Wallpaper.jpg
 chown $USERNAME:$USERNAME "$HOMEDIR/Pictures/taov-wallpaper.jpg"
 cat > "$HOMEDIR/.fehbg" <<EOF
@@ -199,21 +217,18 @@ chmod 644 "$HOMEDIR/.fehbg"
 echo "feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg" >> "$HOMEDIR/.config/openbox/autostart"
 chown $USERNAME:$USERNAME "$HOMEDIR/.config/openbox/autostart"
 
-# .xsession setup (create+chown+chmod last)
 echo "exec openbox-session" > "$HOMEDIR/.xsession"
 chmod 755 "$HOMEDIR/.xsession"
 chown $USERNAME:$USERNAME "$HOMEDIR/.xsession"
 
-# Force till ownership on ALL home subdirs (belt and braces!)
 chown -R $USERNAME:$USERNAME "$HOMEDIR"
 
-# Remove possible stale Xauthority (prevents X session bugs)
 rm -f "$HOMEDIR/.Xauthority"
 chown $USERNAME:$USERNAME "$HOMEDIR"
 
 sudo -u $USERNAME openbox --reconfigure || true
 
-# --- 10. Chrome install (ensure no snap, use .deb, retry logic, at very end)
+# --- 12. Chrome install (.deb, retry logic, at very end)
 CHROME_DEB="/root/chrome.deb"
 wget -O "$CHROME_DEB" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 
@@ -235,33 +250,14 @@ fi
 
 dpkg -i "$CHROME_DEB" || apt-get -fy install
 
-# --- 11. Imagemode Chrome extension (repeat in case plugin path was not there at Chrome install time)
-set +e
-PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
-EXT_DST="/opt/chrome-extensions/imagemode"
-echo "Copying Imagemode Chrome extension from $PLUGIN_SRC to $EXT_DST..."
-mkdir -p "$EXT_DST"
-if [ -d "$PLUGIN_SRC" ]; then
-  cp -r "$PLUGIN_SRC"/* "$EXT_DST"
-  echo "Imagemode extension copied."
-else
-  echo "WARNING: Imagemode plugin directory not found: $PLUGIN_SRC"
-fi
-chown -R $USERNAME:$USERNAME "$EXT_DST"
-set -e
-
-# --- 12. GRUB splash from TAOVLINUX repo (non-blocking)
+# --- 13. GRUB splash (non-blocking, after all else)
 set +e
 REPO_URL="https://github.com/Mike-TOAV/TAOVLINUX.git"
 REPO_DIR="/opt/TAOVLINUX"
 if [ ! -d "$REPO_DIR" ]; then
-  echo "Cloning TAOVLINUX repo to $REPO_DIR..."
   git clone "$REPO_URL" "$REPO_DIR"
 else
-  echo "Updating TAOVLINUX repo in $REPO_DIR..."
-  cd "$REPO_DIR"
-  git pull
-  cd -
+  cd "$REPO_DIR" && git pull
 fi
 
 GRUB_BG_SRC="$REPO_DIR/wallpapers/taov-grub.png"
@@ -283,5 +279,4 @@ set -e
 
 echo "===== TAOV Till Post-Install Setup Complete ====="
 
-# --- 13. Self-cleanup
 rm -- "$0"
