@@ -135,7 +135,7 @@ awk '/<\/keyboard>/{
   print "    </keybind>"
   print "    <keybind key=\"C-A-a\">"
   print "      <action name=\"ShowMenu\">"
-  print "       <menu>applications-menu</menu>"
+  print "       <menu>admin-menu</menu>"
   print "       </action>"
   print "     </keybind>"
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
