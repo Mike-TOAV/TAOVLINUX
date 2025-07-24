@@ -161,6 +161,12 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
         <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
       </action>
     </item>
+    <item label="Konsole">
+   <action name="Execute">
+    <command>konsole</command>
+    <startupnotify><enabled>yes</enabled></startupnotify>
+   </action>
+    </item>
     <separator/>
     <file>/etc/xdg/openbox/menu.xml</file>
     <menu id="applications-menu" label="Applications"/>
