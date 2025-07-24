@@ -133,29 +133,43 @@ awk '/<\/keyboard>/{
   print "        <menu>root-menu</menu>"
   print "      </action>"
   print "    </keybind>"
+  print "    <keybind key="C-A-a">"
+  print "      <action name="ShowMenu">"
+  print "       <menu>applications-menu</menu>"
+  print "       </action>"
+  print "       </keybind>"
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
 chown $USERNAME:$USERNAME "$OPENBOX_RC"
 
 cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu>
-<menu id="root-menu" label="TAOV Menu">
-  <item label="New Lightspeed Tab">
-    <action name="Execute">
-      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
-    </action>
-  </item>
-  <item label="Non-Kiosk Chrome">
-    <action name="Execute">
-      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
-    </action>
-  </item>
-  <item label="SimplePOSPrint Config">
-    <action name="Execute">
-      <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
-    </action>
-  </item>
-</menu>
+  <!-- TAOV Menu -->
+  <menu id="root-menu" label="TAOV Menu">
+    <item label="New Lightspeed Tab">
+      <action name="Execute">
+        <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
+      </action>
+    </item>
+    <item label="Non-Kiosk Chrome">
+      <action name="Execute">
+        <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
+      </action>
+    </item>
+    <item label="SimplePOSPrint Config">
+      <action name="Execute">
+        <command>google-chrome --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
+      </action>
+    </item>
+    <separator/>
+    <!-- Add system menu as a submenu here -->
+    <menu id="applications-menu" label="Applications"/>
+  </menu>
+  
+  <!-- System applications menu, provided by Openbox -->
+  <menu id="applications-menu" label="Applications" execute="true">
+    <file>/etc/xdg/openbox/menu.xml</file>
+  </menu>
 </openbox_menu>
 EOMENU
 chown $USERNAME:$USERNAME "$HOMEDIR/.config/openbox/menu.xml"
