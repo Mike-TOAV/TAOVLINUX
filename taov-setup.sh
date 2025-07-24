@@ -22,14 +22,14 @@ sed -i '/cdrom:/d' /etc/apt/sources.list
 apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter || true
 apt-get autoremove -y || true
 set +e
-apt-get purge -y google-chrome-stable chromium chromium-browser snapd
-rm -rf "$HOMEDIR/.config/google-chrome" "$HOMEDIR/snap" /snap
+apt-get purge -y google-chrome-stable chromium-browser snapd
+rm -rf "$HOMEDIR/.config/google-chrome" "$HOMEDIR/.config/chromium" "$HOMEDIR/snap" /snap
 set -e
 
-# --- 3. Core packages and services
+# --- 3. Core packages and services (note: install chromium here!)
 apt-get update
 apt-get install -y lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox matchbox-keyboard \
-    python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator fonts-dejavu fonts-liberation mesa-utils feh konsole
+    python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator fonts-dejavu fonts-liberation mesa-utils feh konsole chromium
 
 systemctl enable cups
 systemctl start cups
@@ -82,7 +82,7 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# --- 6. Imagemode Chrome extension (copy for policy load, not via --load-extension)
+# --- 6. Imagemode Chrome extension (copy for --load-extension)
 PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
 EXT_DST="/opt/chrome-extensions/imagemode"
 mkdir -p "$EXT_DST"
@@ -120,7 +120,8 @@ chown $USERNAME:$USERNAME "$HOMEDIR/.dmrc"
 cat > "$HOMEDIR/.config/openbox/autostart" <<'EOFA'
 #!/bin/bash
 matchbox-keyboard &
-google-chrome --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
+pkill chromium || true
+chromium --load-extension=/opt/chrome-extensions/imagemode --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
 EOFA
 chmod +x "$HOMEDIR/.config/openbox/autostart"
 chown $USERNAME:$USERNAME "$HOMEDIR/.config/openbox/autostart"
@@ -157,17 +158,17 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
   <menu id="root-menu" label="TAOV Menu">
     <item label="New Lightspeed Tab">
       <action name="Execute">
-        <command>google-chrome --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
+        <command>chromium --load-extension=/opt/chrome-extensions/imagemode --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
       </action>
     </item>
     <item label="Non-Kiosk Chrome">
       <action name="Execute">
-        <command>google-chrome --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
+        <command>chromium --load-extension=/opt/chrome-extensions/imagemode --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
       </action>
     </item>
     <item label="SimplePOSPrint Config">
       <action name="Execute">
-        <command>google-chrome --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
+        <command>chromium --load-extension=/opt/chrome-extensions/imagemode --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble "http://localhost:5000/config.html"</command>
       </action>
     </item>
   </menu>
@@ -210,47 +211,7 @@ chown $USERNAME:$USERNAME "$HOMEDIR"
 
 sudo -u $USERNAME openbox --reconfigure || true
 
-# --- 12. Chrome install (.deb, retry logic, at very end)
-CHROME_DEB="/root/chrome.deb"
-wget -O "$CHROME_DEB" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-
-for i in 1 2; do
-  if dpkg-deb -I "$CHROME_DEB" >/dev/null 2>&1; then
-    break
-  else
-    echo "WARN: Chrome .deb corrupted or incomplete, retrying ($i)..."
-    rm -f "$CHROME_DEB"
-    sleep 1
-    wget -O "$CHROME_DEB" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-  fi
-done
-
-if ! dpkg-deb -I "$CHROME_DEB" >/dev/null 2>&1; then
-  echo "ERROR: Chrome .deb is still corrupt after retries! Exiting setup."
-  exit 1
-fi
-
-dpkg -i "$CHROME_DEB" || apt-get -fy install
-
-# --- 7. Chrome Enterprise Policy to force-load unpacked extension
-POLICY_DIR="/etc/opt/chrome/policies/managed"
-POLICY_FILE="$POLICY_DIR/taov-imagemode-policy.json"
-mkdir -p "$POLICY_DIR"
-cat > "$POLICY_FILE" <<EOF
-{
-  "ExtensionSettings": {
-    "*": {
-      "installation_mode": "allowed"
-    },
-    "file:///opt/chrome-extensions/imagemode": {
-      "installation_mode": "force_installed"
-    }
-  }
-}
-EOF
-chmod 644 "$POLICY_FILE"
-
-# --- 13. GRUB splash (non-blocking, after all else)
+# --- 12. GRUB splash (non-blocking, after all else)
 set +e
 REPO_URL="https://github.com/Mike-TOAV/TAOVLINUX.git"
 REPO_DIR="/opt/TAOVLINUX"
