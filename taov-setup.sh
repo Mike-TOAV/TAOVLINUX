@@ -93,24 +93,6 @@ else
 fi
 chown -R $USERNAME:$USERNAME "$EXT_DST"
 
-# --- 7. Chrome Enterprise Policy to force-load unpacked extension
-POLICY_DIR="/etc/opt/chrome/policies/managed"
-POLICY_FILE="$POLICY_DIR/taov-imagemode-policy.json"
-mkdir -p "$POLICY_DIR"
-cat > "$POLICY_FILE" <<EOF
-{
-  "ExtensionSettings": {
-    "*": {
-      "installation_mode": "allowed"
-    },
-    "file:///opt/chrome-extensions/imagemode": {
-      "installation_mode": "force_installed"
-    }
-  }
-}
-EOF
-chmod 644 "$POLICY_FILE"
-
 # --- 8. User config directories and permissions
 mkdir -p "$HOMEDIR/.config/openbox"
 mkdir -p "$HOMEDIR/Pictures"
@@ -249,6 +231,24 @@ if ! dpkg-deb -I "$CHROME_DEB" >/dev/null 2>&1; then
 fi
 
 dpkg -i "$CHROME_DEB" || apt-get -fy install
+
+# --- 7. Chrome Enterprise Policy to force-load unpacked extension
+POLICY_DIR="/etc/opt/chrome/policies/managed"
+POLICY_FILE="$POLICY_DIR/taov-imagemode-policy.json"
+mkdir -p "$POLICY_DIR"
+cat > "$POLICY_FILE" <<EOF
+{
+  "ExtensionSettings": {
+    "*": {
+      "installation_mode": "allowed"
+    },
+    "file:///opt/chrome-extensions/imagemode": {
+      "installation_mode": "force_installed"
+    }
+  }
+}
+EOF
+chmod 644 "$POLICY_FILE"
 
 # --- 13. GRUB splash (non-blocking, after all else)
 set +e
