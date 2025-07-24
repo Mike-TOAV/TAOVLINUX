@@ -30,7 +30,7 @@ set -e
 # --- 3. Core system install (always as root)
 apt-get update
 apt-get install -y lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox matchbox-keyboard \
-    python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator fonts-dejavu fonts-liberation mesa-utils feh
+    python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator fonts-dejavu fonts-liberation mesa-utils feh konsole
 
 systemctl enable cups
 systemctl start cups
@@ -137,7 +137,7 @@ awk '/<\/keyboard>/{
   print "      <action name=\"ShowMenu\">"
   print "       <menu>applications-menu</menu>"
   print "       </action>"
-  print "       </keybind>"
+  print "     </keybind>"
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
 chown $USERNAME:$USERNAME "$OPENBOX_RC"
 
