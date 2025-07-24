@@ -162,7 +162,7 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
       </action>
     </item>
     <separator/>
-    <!-- Add system menu as a submenu here -->
+    <file>/etc/xdg/openbox/menu.xml</file>
     <menu id="applications-menu" label="Applications"/>
   </menu>
   
