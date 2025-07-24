@@ -138,6 +138,12 @@ awk '/<\/keyboard>/{
   print "       <menu>admin-menu</menu>"
   print "       </action>"
   print "     </keybind>"
+  print "    <keybind key=\"C-A-t\">"
+  print "       <action name="Execute">
+  print "          <command>konsole</command>
+  print "          <startupnotify><enabled>yes</enabled></startupnotify>
+  print "        </action>
+  print "     </keybind>"  
 }1' "$OPENBOX_RC" > "$OPENBOX_RC.new" && mv "$OPENBOX_RC.new" "$OPENBOX_RC"
 chown $USERNAME:$USERNAME "$OPENBOX_RC"
 
