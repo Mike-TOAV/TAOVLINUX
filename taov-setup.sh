@@ -165,7 +165,7 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<'EOMENU'
   
   <!-- System applications menu, provided by Openbox -->
   <menu id="admin-menu" label="Admin Menu">
-  <menu id="applications-menu" label="Applications" execute="/usr/bin/odbamenu"/>
+  <menu id="applications-menu" label="Applications" execute="/usr/bin/obamenu"/>
   <separator />
   <item label="Konsole">
    <action name="Execute">
