@@ -15,6 +15,42 @@ function safe_exec() {
   "$@" || echo "Warning: command failed: $*"
 }
 
+function generate_network_failover_script() {
+  cat > /usr/local/bin/taov-netcheck.sh <<'EOF'
+#!/bin/bash
+# Check every 5 minutes if internet is down, and launch nm-connection-editor if so
+while true; do
+  if ! ping -q -c 1 -W 5 8.8.8.8 >/dev/null; then
+    logger -t taov-netcheck "No internet detected — launching network manager UI."
+    pkill nm-connection-editor || true
+    sudo -u till DISPLAY=:0 XAUTHORITY=/home/till/.Xauthority nm-connection-editor &
+    sleep 300
+  else
+    sleep 300
+  fi
+done
+EOF
+  chmod +x /usr/local/bin/taov-netcheck.sh
+
+  cat > /etc/systemd/system/taov-netcheck.service <<EOF2
+[Unit]
+Description=TAOV Network Failover Checker
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/taov-netcheck.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF2
+
+  systemctl daemon-reload
+  systemctl enable taov-netcheck.service
+  systemctl start taov-netcheck.service
+}
+
 echo "===== TAOV Till Post-Install Setup ====="
 
 if ! id "$USERNAME" >/dev/null 2>&1; then
@@ -241,5 +277,7 @@ chown -R $USERNAME:$USERNAME "$HOMEDIR"
 rm -f "$HOMEDIR/.Xauthority"
 
 sudo -u $USERNAME openbox --reconfigure || true
+
+generate_network_failover_script
 
 echo "===== Setup Complete ====="
