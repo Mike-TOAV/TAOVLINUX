@@ -158,7 +158,7 @@ echo "Poppins fonts installed!"
 # ---- Download & install a TAOV Openbox theme (dark, modern, big touch targets)
 THEME_DIR="/usr/share/themes/Obsidian-2"
 if [ ! -d "$THEME_DIR" ]; then
-  wget -O /tmp/obsidian-2.tar.gz https://github.com/jnsh/obsidian-2/archive/refs/heads/master.tar.gz
+  wget -O /tmp/obsidian-2.tar.gz https://github.com/jnsh/obsidian-2/archive/refs/heads/main.tar.gz
   tar -xf /tmp/obsidian-2.tar.gz -C /usr/share/themes
   mv /usr/share/themes/obsidian-2-master "$THEME_DIR"
 fi
