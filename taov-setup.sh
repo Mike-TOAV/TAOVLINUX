@@ -335,6 +335,42 @@ else
 fi
 set -e
 
+# --- Onboard config: autohide on keyboard, blackboard theme, dock bottom ---
+apt-get install -y onboard
+sudo -u till mkdir -p /home/till/.config/onboard
+cat > /home/till/.config/onboard/onboard.conf <<EOF
+[Window]
+docking=2
+dock_iconified=false
+xid_mode=normal
+
+[Onboard]
+theme=Blackboard
+auto_hide=true
+auto_show=true
+auto_show_only_if_no_hardware_keyboard=true
+EOF
+chown -R till:till /home/till/.config/onboard
+
+# --- Remove unwanted dock/panel apps from autostart ---
+sed -i '/lxqt-panel\|tint2\|plank\|feh\|ktelnet/Id' /home/till/.config/openbox/autostart
+
+# --- Touch-friendly cursor (Adwaita), smaller size ---
+apt-get install -y adwaita-icon-theme-full
+sudo -u till mkdir -p /home/till/.icons/default
+cat > /home/till/.icons/default/index.theme <<EOCURSOR
+[Icon Theme]
+Name=Adwaita
+Inherits=Adwaita
+EOCURSOR
+echo 'export XCURSOR_SIZE=24' >> /home/till/.profile
+echo 'export XCURSOR_SIZE=24' >> /home/till/.xsessionrc
+chown -R till:till /home/till/.icons
+
+# (Optional) Set cursor theme at X startup
+echo 'export XCURSOR_THEME=Adwaita' >> /home/till/.profile
+echo 'export XCURSOR_THEME=Adwaita' >> /home/till/.xsessionrc
+
 echo "===== TAOV Till Post-Install Setup Complete ====="
 
 rm -- "$0"
