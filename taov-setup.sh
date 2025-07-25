@@ -201,7 +201,7 @@ awk '/<\/keyboard>/ {
 mv "$HOMEDIR/.config/openbox/rc.xml.new" "$HOMEDIR/.config/openbox/rc.xml"
 
 mkdir -p "$HOMEDIR/Pictures"
-wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/wallpapers/TAOV-wallpaper.jpg
+wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/wallpapers/TAOV-Wallpaper.jpg
 cat > "$HOMEDIR/.fehbg" <<EOF
 feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg
 EOF
