@@ -219,15 +219,17 @@ sed -i 's|<font place=\"InactiveWindow\">.*</font>|<font place=\"InactiveWindow\
 
 awk '
 /<\/keyboard>/ {
-  print "    <keybind key=\\\"C-A-space\\\">"
-  print "      <action name=\\\"ShowMenu\\\"><menu>root-menu</menu></action>"
+  print "    <keybind key=\"C-A-space\">"
+  print "      <action name=\"ShowMenu\"><menu>root-menu</menu></action>"
   print "    </keybind>"
-  print "    <keybind key=\\\"C-A-a\\\">"
-  print "      <action name=\\\"ShowMenu\\\"><menu>admin-menu</menu></action>"
+  print "    <keybind key=\"C-A-a\">"
+  print "      <action name=\"ShowMenu\"><menu>admin-menu</menu></action>"
   print "    </keybind>"
-  print "    <keybind key=\\\"C-A-t\\\">"
-  print "      <action name=\\\"Execute\\\"><command>konsole</command></action>"
+  print "    <keybind key=\"C-A-t\">"
+  print "      <action name=\"Execute\"><command>konsole</command></action>"
   print "    </keybind>"
+  print $0
+  next
 }
 { print }
 ' "$RC_XML" > "$RC_XML.new"
