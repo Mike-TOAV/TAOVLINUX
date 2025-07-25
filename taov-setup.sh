@@ -129,16 +129,15 @@ ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.s
 echo -e "[Desktop]\nSession=openbox" > "$HOMEDIR/.dmrc"
 chown $USERNAME:$USERNAME "$HOMEDIR/.dmrc"
 
-# --- Install Poppins fonts (for touch-optimized TAOV UI) ---
-echo "Installing Poppins font..."
-apt-get install -y unzip
-POPPINS_ZIP="/tmp/Poppins.zip"
+# --- TAOV: Install Poppins font family (touch-friendly, modern)
 POPPINS_DIR="/usr/local/share/fonts/truetype/poppins"
+POPPINS_ZIP="/tmp/Poppins.zip"
 mkdir -p "$POPPINS_DIR"
-
-wget -O "$POPPINS_ZIP" "https://fonts.google.com/download?family=Poppins" || curl -L -o "$POPPINS_ZIP" "https://fonts.google.com/download?family=Poppins"
+wget -O "$POPPINS_ZIP" "https://fonts.google.com/download?family=Poppins"
 unzip -o "$POPPINS_ZIP" -d "$POPPINS_DIR"
-fc-cache -f -v
+fc-cache -f
+chown -R root:root "$POPPINS_DIR"
+chmod 644 "$POPPINS_DIR"/*.ttf
 
 # 9. Openbox: Modern theme, touch settings, menu, dock autostart, wallpaper
 # ---- Download & install a TAOV Openbox theme (dark, modern, big touch targets)
