@@ -129,15 +129,30 @@ ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.s
 echo -e "[Desktop]\nSession=openbox" > "$HOMEDIR/.dmrc"
 chown $USERNAME:$USERNAME "$HOMEDIR/.dmrc"
 
-# --- TAOV: Install Poppins font family (touch-friendly, modern)
+# --- Install Poppins Font Family (Direct from Google Fonts repo on GitHub)
 POPPINS_DIR="/usr/local/share/fonts/truetype/poppins"
-POPPINS_ZIP="/tmp/Poppins.zip"
 mkdir -p "$POPPINS_DIR"
-wget -O "$POPPINS_ZIP" "https://fonts.google.com/download?family=Poppins"
-unzip -o "$POPPINS_ZIP" -d "$POPPINS_DIR"
-fc-cache -f
+
+# List the font styles you want (add/remove as needed)
+POPPINS_FONTS=(
+  "Poppins-Regular.ttf"
+  "Poppins-Bold.ttf"
+  "Poppins-Italic.ttf"
+  "Poppins-BoldItalic.ttf"
+  "Poppins-Light.ttf"
+  "Poppins-SemiBold.ttf"
+  "Poppins-ExtraBold.ttf"
+  "Poppins-Thin.ttf"
+)
+
+for FONT in "${POPPINS_FONTS[@]}"; do
+  wget -q -O "$POPPINS_DIR/$FONT" "https://github.com/google/fonts/raw/main/ofl/poppins/$FONT"
+done
+
+fc-cache -fv "$POPPINS_DIR"
 chown -R root:root "$POPPINS_DIR"
 chmod 644 "$POPPINS_DIR"/*.ttf
+echo "Poppins fonts installed!"
 
 # 9. Openbox: Modern theme, touch settings, menu, dock autostart, wallpaper
 # ---- Download & install a TAOV Openbox theme (dark, modern, big touch targets)
