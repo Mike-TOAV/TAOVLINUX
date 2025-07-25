@@ -200,7 +200,7 @@ cp /etc/xdg/openbox/rc.xml "$RC_XML"
 sed -i 's|<name>.*</name>|<name>Arc-Dark</name>|g' "$RC_XML"
 sed -i 's|<font place=\"ActiveWindow\">.*</font>|<font place=\"ActiveWindow\">Poppins Bold 22</font>|g' "$RC_XML"
 sed -i 's|<font place=\"InactiveWindow\">.*</font>|<font place=\"InactiveWindow\">Poppins 18</font>|g' "$RC_XML"
-awk '/<\\/keyboard>/ {
+awk '/<\/keyboard>/ {
   print "    <keybind key=\\\"C-A-space\\\">"
   print "      <action name=\\\"ShowMenu\\\"><menu>root-menu</menu></action>"
   print "    </keybind>"
