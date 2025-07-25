@@ -147,7 +147,23 @@ EOCURSOR
 echo "Xcursor.size: 24" >> "$HOMEDIR/.Xresources"
 echo 'export XCURSOR_SIZE=24' >> "$HOMEDIR/.profile"
 
-# 13. Openbox menu and config
+# 13. Onboard Keyboard Settings (Dark, Docked, Autohide)
+mkdir -p "$HOMEDIR/.config/onboard"
+cat > "$HOMEDIR/.config/onboard/onboard.conf" <<EOF
+[Window]
+docking=2
+dock_iconified=false
+xid_mode=normal
+
+[Onboard]
+theme=Blackboard
+auto_hide=true
+auto_show=true
+auto_show_only_if_no_hardware_keyboard=true
+EOF
+chown -R $USERNAME:$USERNAME "$HOMEDIR/.config/onboard"
+
+# 14. Openbox menu and config
 mkdir -p "$HOMEDIR/.config/openbox"
 cat > "$HOMEDIR/.config/openbox/menu.xml" <<EOMENU
 <openbox_menu>
@@ -200,7 +216,9 @@ cp /etc/xdg/openbox/rc.xml "$RC_XML"
 sed -i 's|<name>.*</name>|<name>Arc-Dark</name>|g' "$RC_XML"
 sed -i 's|<font place=\"ActiveWindow\">.*</font>|<font place=\"ActiveWindow\">Poppins Bold 22</font>|g' "$RC_XML"
 sed -i 's|<font place=\"InactiveWindow\">.*</font>|<font place=\"InactiveWindow\">Poppins 18</font>|g' "$RC_XML"
-awk '/<\/keyboard>/ {
+
+awk '
+/<\/keyboard>/ {
   print "    <keybind key=\\\"C-A-space\\\">"
   print "      <action name=\\\"ShowMenu\\\"><menu>root-menu</menu></action>"
   print "    </keybind>"
@@ -210,7 +228,9 @@ awk '/<\/keyboard>/ {
   print "    <keybind key=\\\"C-A-t\\\">"
   print "      <action name=\\\"Execute\\\"><command>konsole</command></action>"
   print "    </keybind>"
-}1' "$RC_XML" > "$RC_XML.new"
+}
+{ print }
+' "$RC_XML" > "$RC_XML.new"
 mv "$RC_XML.new" "$RC_XML"
 
 chown -R $USERNAME:$USERNAME "$HOMEDIR/.config/openbox"
@@ -227,13 +247,13 @@ chromium --app="https://aceofvapez.retail.lightspeed.app/" --load-extension=$EXT
 EOFA
 chmod +x "$HOMEDIR/.config/openbox/autostart"
 
-# 14. Wallpaper, Xsession, chown
+# 15. Wallpaper, Xsession, chown
 echo "exec openbox-session" > "$HOMEDIR/.xsession"
 chmod 755 "$HOMEDIR/.xsession"
 chown -R $USERNAME:$USERNAME "$HOMEDIR"
 rm -f "$HOMEDIR/.Xauthority"
 
-# 15. GRUB splash
+# 16. GRUB splash
 if [ ! -d "$REPO_DIR" ]; then
   git clone https://github.com/Mike-TOAV/TAOVLINUX.git "$REPO_DIR"
 else
@@ -252,7 +272,7 @@ if [ -f "$GRUB_BG_SRC" ]; then
   update-grub
 fi
 
-# 16. Plank configuration (launchers)
+# 17. Plank configuration (launchers)
 configure_plank() {
   mkdir -p "$HOMEDIR/.config/plank/dock1/launchers"
   rm -f "$HOMEDIR/.config/plank/dock1/launchers"/*.dockitem
@@ -286,7 +306,7 @@ EOF
 }
 configure_plank
 
-# 17. Network failover watchdog
+# 18. Network failover watchdog
 generate_network_failover_script() {
   cat > /usr/local/bin/taov-netcheck.sh <<'EOF'
 #!/bin/bash
@@ -323,6 +343,6 @@ EOF2
 }
 generate_network_failover_script
 
-# 18. Final Openbox reload and log
+# 19. Final Openbox reload and log
 sudo -u $USERNAME openbox --reconfigure || true
 echo "===== Setup Complete ====="
