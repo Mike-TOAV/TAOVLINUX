@@ -156,11 +156,31 @@ echo "Poppins fonts installed!"
 
 # 9. Openbox: Modern theme, touch settings, menu, dock autostart, wallpaper
 # ---- Download & install a TAOV Openbox theme (dark, modern, big touch targets)
-THEME_DIR="/usr/share/themes/Obsidian-2"
-if [ ! -d "$THEME_DIR" ]; then
-  wget -O /tmp/obsidian-2.tar.gz https://github.com/jnsh/obsidian-2/archive/refs/heads/main.tar.gz
-  tar -xf /tmp/obsidian-2.tar.gz -C /usr/share/themes
-  mv /usr/share/themes/obsidian-2-master "$THEME_DIR"
+# --- Modern Touch-Friendly Theme: Arc-Dark ---
+ARC_DARK_DIR="/usr/share/themes/Arc-Dark"
+echo "Installing Arc-Dark GTK/Openbox theme..."
+
+# Download and extract Arc theme (which contains Arc-Dark)
+wget -O /tmp/arc-theme.tar.gz https://github.com/jnsh/arc-theme/archive/master.tar.gz
+rm -rf /usr/share/themes/Arc /usr/share/themes/Arc-Dark
+mkdir -p /usr/share/themes/Arc
+tar -xzf /tmp/arc-theme.tar.gz --strip-components=1 -C /usr/share/themes/Arc
+
+# Arc-Dark is a subfolder (Arc includes Arc, Arc-Dark, Arc-Darker)
+if [ -d "/usr/share/themes/Arc/Arc-Dark" ]; then
+  cp -r /usr/share/themes/Arc/Arc-Dark "$ARC_DARK_DIR"
+fi
+
+echo "Arc-Dark theme installed to $ARC_DARK_DIR"
+
+# --- Set Arc-Dark as the Openbox theme for till ---
+OPENBOX_RC="/home/till/.config/openbox/rc.xml"
+if [ -f "$OPENBOX_RC" ]; then
+  sed -i '/<theme>/,/<\/theme>/s|<name>.*</name>|<name>Arc-Dark</name>|' "$OPENBOX_RC"
+  chown till:till "$OPENBOX_RC"
+  echo "Arc-Dark set as the Openbox theme for till."
+else
+  echo "Openbox rc.xml not found for till; skipping theme set."
 fi
 
 cat > "$HOMEDIR/.config/openbox/autostart" <<'EOFA'
