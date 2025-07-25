@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-exec > >(tee /root/taov-setup.log) 2>&1
+exec > >(tee /root/taov-setup.log | tee /dev/tty) 2>&1
 set -x
 
 USERNAME="till"
@@ -11,16 +11,18 @@ EXT_DST="/opt/chrome-extensions/imagemode"
 REPO_DIR="/opt/TAOVLINUX"
 POPPINS_DIR="/usr/local/share/fonts/truetype/poppins"
 
+function safe_exec() {
+  "$@" || echo "Warning: command failed: $*"
+}
+
 echo "===== TAOV Till Post-Install Setup ====="
 
-# Ensure user exists
 if ! id "$USERNAME" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$USERNAME"
   echo "$USERNAME:T@OV2025!" | chpasswd
   usermod -aG sudo "$USERNAME"
 fi
 
-# Fonts XML override
 cat > /etc/fonts/local.conf <<EOF
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
@@ -33,14 +35,12 @@ cat > /etc/fonts/local.conf <<EOF
 EOF
 fc-cache -f -v
 
-# Debloat
 sed -i '/cdrom:/d' /etc/apt/sources.list
-apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter || true
-apt-get autoremove -y || true
-apt-get purge -y google-chrome-stable chromium-browser snapd || true
+safe_exec apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter
+safe_exec apt-get autoremove -y
+safe_exec apt-get purge -y google-chrome-stable chromium-browser snapd
 rm -rf "$HOMEDIR/.config/google-chrome" "$HOMEDIR/.config/chromium" "$HOMEDIR/snap" /snap
 
-# Core packages
 apt-get update
 apt-get install -y \
   lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox \
@@ -51,23 +51,18 @@ systemctl enable cups
 systemctl start cups
 usermod -aG lpadmin "$USERNAME"
 
-# AnyDesk
-set +e
-wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | apt-key add -
+safe_exec wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | apt-key add -
 echo "deb http://deb.anydesk.com/ all main" > /etc/apt/sources.list.d/anydesk.list
 apt-get update
-apt-get -y install anydesk
-set -e
+safe_exec apt-get -y install anydesk
 
-# SimplePOSPrint setup
 if ! id "$SPP_USER" >/dev/null 2>&1; then
   useradd -r -m -s /bin/bash "$SPP_USER"
 fi
 if [ ! -d "$SIMPLEPOS_DIR" ]; then
   git clone https://github.com/Mike-TOAV/SimplePOSPrint.git "$SIMPLEPOS_DIR"
 else
-  cd "$SIMPLEPOS_DIR"
-  git pull
+  cd "$SIMPLEPOS_DIR" && git pull
 fi
 cd "$SIMPLEPOS_DIR"
 python3 -m venv venv
@@ -98,20 +93,17 @@ systemctl daemon-reload
 systemctl enable simpleposprint.service
 systemctl restart simpleposprint.service
 
-# Chrome extension
 mkdir -p "$EXT_DST"
 PLUGIN_SRC="$SIMPLEPOS_DIR/plugins/imagemode"
 [ -d "$PLUGIN_SRC" ] && cp -r "$PLUGIN_SRC"/* "$EXT_DST"
 chown -R $USERNAME:$USERNAME "$EXT_DST"
 
-# LightDM setup
 if [ -f /etc/lightdm/lightdm.conf ]; then
   sed -i 's/^#autologin-user=.*/autologin-user=till/' /etc/lightdm/lightdm.conf
   sed -i '/^\[Seat:\*\]/a autologin-user=till\nuser-session=openbox' /etc/lightdm/lightdm.conf || true
 fi
 ln -sf /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.service
 
-# Poppins font
 mkdir -p "$POPPINS_DIR"
 POPPINS_FONTS=(
   Poppins-Regular.ttf Poppins-Bold.ttf Poppins-Italic.ttf
@@ -124,24 +116,70 @@ done
 fc-cache -fv "$POPPINS_DIR"
 chmod 644 "$POPPINS_DIR"/*.ttf
 
-# Openbox setup
-theme_dir="/usr/share/themes/Arc"
+TMP_ARC=/tmp/arc-theme
+mkdir -p "$TMP_ARC"
 wget -O /tmp/arc-theme.tar.gz https://github.com/jnsh/arc-theme/archive/master.tar.gz
-mkdir -p "$theme_dir"
-tar -xzf /tmp/arc-theme.tar.gz --strip-components=1 -C "$theme_dir"
-cp -r "$theme_dir/Arc-Dark" /usr/share/themes/
+safe_exec tar -xzf /tmp/arc-theme.tar.gz -C "$TMP_ARC" --strip-components=1
+safe_exec cp -r "$TMP_ARC/common/Arc-Dark" /usr/share/themes/Arc-Dark
 
+# Menu will be rewritten below
 mkdir -p "$HOMEDIR/.config/openbox"
+
+cat > "$HOMEDIR/.config/openbox/menu.xml" <<EOMENU
+<openbox_menu>
+  <menu id="root-menu" label="TAOV Menu">
+    <item label="New Lightspeed Tab">
+      <action name="Execute">
+        <command>chromium --app=\"https://aceofvapez.retail.lightspeed.app/\" --load-extension=$EXT_DST</command>
+      </action>
+    </item>
+    <item label="SimplePOSPrint Config">
+      <action name="Execute">
+        <command>chromium --app=\"http://localhost:5000/config.html\" --load-extension=$EXT_DST</command>
+      </action>
+    </item>
+    <item label="Open Admin Menu (Ctrl+Alt+A)">
+      <action name="ShowMenu">
+        <menu>admin-menu</menu>
+      </action>
+    </item>
+  </menu>
+  <menu id="admin-menu" label="TAOV Admin">
+    <item label="Non-Kiosk Chromium">
+      <action name="Execute">
+        <command>chromium --no-sandbox --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
+      </action>
+    </item>
+    <item label="Konsole Terminal">
+      <action name="Execute">
+        <command>konsole</command>
+      </action>
+    </item>
+    <item label="Restart Openbox">
+      <action name="Restart"/>
+    </item>
+    <item label="Shutdown">
+      <action name="Execute"><command>systemctl poweroff</command></action>
+    </item>
+    <item label="Reboot">
+      <action name="Execute"><command>systemctl reboot</command></action>
+    </item>
+    <item label="Logout">
+      <action name="Exit"/>
+    </item>
+  </menu>
+</openbox_menu>
+EOMENU
+
 cat > "$HOMEDIR/.config/openbox/autostart" <<EOFA
 #!/bin/bash
 xsetroot -cursor_name left_ptr
 export XCURSOR_SIZE=48
 onboard &
 plank &
-[ -f "\$HOME/.fehbg" ] && bash "\$HOME/.fehbg" &
+[ -f "$HOME/.fehbg" ] && bash "$HOME/.fehbg" &
 pkill chromium || true
-chromium --load-extension=$EXT_DST --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble \
-  "https://aceofvapez.retail.lightspeed.app/" "http://localhost:5000/config.html" &
+chromium --app="https://aceofvapez.retail.lightspeed.app/" --load-extension=$EXT_DST --kiosk --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble &
 EOFA
 chmod +x "$HOMEDIR/.config/openbox/autostart"
 
@@ -149,44 +187,26 @@ cp /etc/xdg/openbox/rc.xml "$HOMEDIR/.config/openbox/rc.xml"
 sed -i 's|<name>.*</name>|<name>Arc-Dark</name>|g' "$HOMEDIR/.config/openbox/rc.xml"
 sed -i 's|<font place="ActiveWindow">.*</font>|<font place="ActiveWindow">Poppins Bold 22</font>|g' "$HOMEDIR/.config/openbox/rc.xml"
 sed -i 's|<font place="InactiveWindow">.*</font>|<font place="InactiveWindow">Poppins 18</font>|g' "$HOMEDIR/.config/openbox/rc.xml"
-
-cat > "$HOMEDIR/.config/openbox/menu.xml" <<EOMENU
-<openbox_menu>
-  <menu id="root-menu" label="TAOV Touch">
-    <item label="New Lightspeed Tab">
-      <action name="Execute">
-        <command>chromium --new-window "https://aceofvapez.retail.lightspeed.app/"</command>
-      </action>
-    </item>
-    <item label="SimplePOSPrint Config">
-      <action name="Execute">
-        <command>chromium "http://localhost:5000/config.html"</command>
-      </action>
-    </item>
-  </menu>
-</openbox_menu>
-EOMENU
-
-# Hotkeys
 awk '/<\/keyboard>/ {
   print "    <keybind key=\"C-A-space\">"
-  print "      <action name=\"ShowMenu\">"
-  print "        <menu>root-menu</menu>"
-  print "      </action>"
+  print "      <action name=\"ShowMenu\"><menu>root-menu</menu></action>"
+  print "    </keybind>"
+  print "    <keybind key=\"C-A-a\">"
+  print "      <action name=\"ShowMenu\"><menu>admin-menu</menu></action>"
+  print "    </keybind>"
+  print "    <keybind key=\"C-A-t\">"
+  print "      <action name=\"Execute\"><command>konsole</command></action>"
   print "    </keybind>"
 }1' "$HOMEDIR/.config/openbox/rc.xml" > "$HOMEDIR/.config/openbox/rc.xml.new"
 mv "$HOMEDIR/.config/openbox/rc.xml.new" "$HOMEDIR/.config/openbox/rc.xml"
 
-# Wallpaper
 mkdir -p "$HOMEDIR/Pictures"
 wget -O "$HOMEDIR/Pictures/taov-wallpaper.jpg" https://github.com/Mike-TOAV/TAOVLINUX/raw/main/wallpapers/TAOV-wallpaper.jpg
 cat > "$HOMEDIR/.fehbg" <<EOF
 feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg
 EOF
-chmod 644 "$HOMEDIR/.fehbg"
 echo "feh --bg-scale \$HOME/Pictures/taov-wallpaper.jpg" >> "$HOMEDIR/.config/openbox/autostart"
 
-# GRUB Splash
 if [ ! -d "$REPO_DIR" ]; then
   git clone https://github.com/Mike-TOAV/TAOVLINUX.git "$REPO_DIR"
 else
@@ -205,7 +225,6 @@ if [ -f "$GRUB_BG_SRC" ]; then
   update-grub
 fi
 
-# Cursor theme
 mkdir -p "$HOMEDIR/.icons/default"
 cat > "$HOMEDIR/.icons/default/index.theme" <<EOCURSOR
 [Icon Theme]
@@ -216,8 +235,11 @@ EOCURSOR
 echo "Xcursor.size: 24" >> "$HOMEDIR/.Xresources"
 echo 'export XCURSOR_SIZE=24' >> "$HOMEDIR/.profile"
 
-# Ownership and final
 echo "exec openbox-session" > "$HOMEDIR/.xsession"
 chmod 755 "$HOMEDIR/.xsession"
 chown -R $USERNAME:$USERNAME "$HOMEDIR"
 rm -f "$HOMEDIR/.Xauthority"
+
+sudo -u $USERNAME openbox --reconfigure || true
+
+echo "===== Setup Complete ====="
