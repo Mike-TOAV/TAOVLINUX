@@ -36,10 +36,6 @@ fc-cache -f -v
 
 # 3. Clean unwanted packages
 sed -i '/cdrom:/d' /etc/apt/sources.list
-safe_exec apt-get purge -y libreoffice* gnome* orca* kde* cinnamon* mate* lxqt* lxde* xfce4* task-desktop* task-* lightdm-gtk-greeter
-safe_exec apt-get autoremove -y
-safe_exec apt-get purge -y google-chrome-stable chromium-browser snapd
-rm -rf "$HOMEDIR/.config/google-chrome" "$HOMEDIR/.config/chromium" "$HOMEDIR/snap" /snap
 
 # 4. Install essentials
 apt-get update
