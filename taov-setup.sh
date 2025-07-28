@@ -20,7 +20,8 @@ if ! id "$USERNAME" >/dev/null 2>&1; then
   usermod -aG sudo "$USERNAME"
 fi
 
-# 2. Font config
+# 2. Font config (ensure directory exists!)
+mkdir -p /etc/fonts
 cat > /etc/fonts/local.conf <<EOF
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
@@ -45,7 +46,7 @@ apt-get update
 apt-get install -y \
   lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox \
   python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator \
-  mesa-utils feh konsole plank onboard chromium xcursor-themes adwaita-icon-theme-full passwd 
+  mesa-utils feh konsole plank onboard chromium xcursor-themes adwaita-icon-theme-full passwd
 
 systemctl enable cups
 systemctl start cups
