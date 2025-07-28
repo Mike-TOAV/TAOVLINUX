@@ -45,7 +45,7 @@ apt-get update
 apt-get install -y \
   lightdm cups system-config-printer network-manager network-manager-gnome alsa-utils pulseaudio xorg openbox \
   python3 python3-pip python3-venv nano wget curl unzip sudo git xserver-xorg-input-evdev xinput xinput-calibrator \
-  mesa-utils feh konsole plank onboard chromium xcursor-themes adwaita-icon-theme-full
+  mesa-utils feh konsole plank onboard chromium xcursor-themes adwaita-icon-theme-full passwd 
 
 systemctl enable cups
 systemctl start cups
@@ -170,12 +170,12 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<EOMENU
   <menu id="root-menu" label="TAOV Menu">
     <item label="New Lightspeed Tab">
       <action name="Execute">
-        <command>chromium --app=\"https://aceofvapez.retail.lightspeed.app/\" --load-extension=$EXT_DST --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
+        <command>chromium https://aceofvapez.retail.lightspeed.app/ --load-extension=$EXT_DST --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
       </action>
     </item>
     <item label="SimplePOSPrint Config">
       <action name="Execute">
-        <command>chromium --app=\"http://localhost:5000/config.html\" --load-extension=$EXT_DST --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
+        <command>chromium http://localhost:5000/config.html\ --load-extension=$EXT_DST --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
       </action>
     </item>
     <item label="Open Admin Menu (Ctrl+Alt+A)">
