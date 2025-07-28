@@ -175,12 +175,7 @@ cat > "$HOMEDIR/.config/openbox/menu.xml" <<EOMENU
     </item>
     <item label="SimplePOSPrint Config">
       <action name="Execute">
-        <command>chromium http://localhost:5000/config.html\ --load-extension=$EXT_DST --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
-      </action>
-    </item>
-    <item label="Open Admin Menu (Ctrl+Alt+A)">
-      <action name="ShowMenu">
-        <menu>admin-menu</menu>
+        <command>chromium http://localhost:5000/config.html --load-extension=$EXT_DST --no-first-run --disable-translate --disable-infobars --disable-session-crashed-bubble</command>
       </action>
     </item>
   </menu>
