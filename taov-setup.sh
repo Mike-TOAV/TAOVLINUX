@@ -300,6 +300,28 @@ EOF
 }
 configure_plank
 
+# Ensure /usr/sbin and /sbin are in the PATH for all users
+if ! grep -q '/usr/sbin' /etc/environment; then
+  echo 'PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' >> /etc/environment
+fi
+
+if ! grep -q '/usr/sbin' /etc/profile; then
+  echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' >> /etc/profile
+fi
+
+# For bash shells, ensure PATH is correct
+for f in /etc/bash.bashrc "$HOMEDIR/.bashrc" "$HOMEDIR/.profile"; do
+  if [ -f "$f" ] && ! grep -q '/usr/sbin' "$f"; then
+    echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"' >> "$f"
+  fi
+done
+
+# Make sure till user is in the sudo group (if not already)
+usermod -aG sudo till
+
+# (Optional, but recommended: make sure spp is in lp/lpadmin too)
+usermod -aG lp,lpadmin spp || /usr/sbin/adduser spp lp || true
+
 # 18. Network failover watchdog
 generate_network_failover_script() {
   cat > /usr/local/bin/taov-netcheck.sh <<'EOF'
